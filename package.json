@@ -11,6 +11,7 @@
     "new": "tsx scripts/new.ts",
     "assets": "tsx scripts/gen-audio.ts",
     "flashcheck": "tsx scripts/flashcheck.ts",
+    "sound": "tsx scripts/gen-sound.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

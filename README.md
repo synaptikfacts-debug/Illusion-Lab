@@ -9,6 +9,14 @@ ffmpeg for platform exports. Every render is deterministic (seeded, frame-driven
 - Node 20+ and ffmpeg/ffprobe on PATH.
 - `npm install`
 - `npm run assets` (regenerates the in-house music bed and SFX; render also does this when they are missing)
+- Instrument samples for the YouTube music (git-ignored, ~60 MB) into `samples/`:
+  `npm pack @audio-samples/piano-mp3-velocity6@1.0.5 @audio-samples/piano-mp3-velocity10@1.0.5 tiny-orchestra@0.2.0`,
+  extract each and move its `package` folder to `samples/piano-v6`, `samples/piano-v10`, `samples/orchestra`.
+
+## Sound rule
+Every version gets motion-synced, calm sound effects. Music goes ONLY on the YouTube file (in-house, calm,
+real sampled piano/strings/harp); Instagram, TikTok, Facebook and X get SFX only so the owner can add a trending
+track. `npm run sound -- <id>` rebuilds a reel's generated audio without rendering video.
 
 Remotion licence: free for individuals and companies with up to 3 employees (remotion.dev/license).
 

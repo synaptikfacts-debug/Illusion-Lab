@@ -24,5 +24,7 @@ and is archived in reels/archive/.
 - EVERY version has sound effects synced to the motion (ticks, whooshes, impacts, textures). Never silent.
 - NO music on Instagram, TikTok, Facebook or X: the owner adds a trending track in the app. SFX must not be tonal
   melodies that would clash with that track.
-- YouTube ONLY: SFX + a catchy background track made in-house (scripts/gen-music.ts), synced to the reel's big moment.
+- YouTube ONLY: SFX + a CALM, satisfying background track made in-house from real sampled instruments (felt piano,
+  soft strings, harp; scripts/gen-music.ts), synced to the reel's big moment. Never synth grooves (owner: "cringe, AI slop").
+- SFX style: calm and satisfying (soft rounded taps, dark air, gentle settles), never harsh ticks or synth risers.
 - The pipeline does this automatically: `audio.music` / `audio.musicGen` go only into SHORT_ (platforms.ts `music: true`).

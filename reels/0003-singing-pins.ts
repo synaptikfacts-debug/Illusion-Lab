@@ -25,7 +25,7 @@ export default defineReel({
   // SFX on every version (pin ticks, motion whoosh, lock); catchy in-house music on YouTube only (owner rule)
   audio: {
     musicVolume: 0.55,
-    musicGen: { bpm: 120, dropAt: 11.1, key: 57, seed: 3 },
+    musicGen: { bpm: 72, dropAt: 11.1, seed: 3 },
     sfx: [{ at: 0, file: "generated/0003-singing-pins-sfx.wav", volume: 1 }],
   },
   cover: { at: 11.1 },

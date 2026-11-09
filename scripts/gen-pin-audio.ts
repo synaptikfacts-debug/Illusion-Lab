@@ -1,17 +1,20 @@
-// Sound effects for a pinWall reel, computed from the same physics as the picture (owner rule: SFX on every
-// version, no music/melody - the owner adds trending music on Instagram/TikTok):
-//  - ticks: a tiny non-pitched metal tick each time a pin peaks (waves crossing the wall = rattling sweeps)
-//  - motion: airy whoosh whose level and brightness follow how fast the whole wall is moving
-//  - lock: soft cascade + low thump when the pins freeze into the picture
-// Writes assets/generated/<id>-sfx.wav.
+// Calm, satisfying sound effects for a pinWall reel, computed from the same physics as the picture.
+// Owner rules: SFX on every version, no music or melody (Instagram/TikTok get the owner's trending track),
+// calm and satisfying (Nov 9 feedback: not harsh, not "AI slop").
+//  - taps: soft, rounded fingertip-on-wood taps when pins peak (random pitch, never a scale), thinning out as the
+//    wall slows down
+//  - air: dark, gentle air that follows how fast the wall is moving
+//  - settle: soft woodblock "tok" and a warm low "whum" when the pins lock into the picture, then a calm exhale
+// Everything sits in a light reverb. Writes assets/generated/<id>-sfx.wav.
 import { join } from "node:path";
 import type { Reel } from "../src/core/schema";
 import { rng } from "../src/core/seed";
 import { timeline } from "../src/core/timing";
 import { pinSchema } from "../src/illusions/pinWall/schema";
 import { height, layout, peakTimes } from "../src/scenes/pins/physics";
-import { addWrapped, Biquad, SR, stereo, writeWav } from "./lib/dsp";
+import { addWrapped, Biquad, reverb, SR, stereo, writeWav } from "./lib/dsp";
 import { ASSETS } from "./lib/paths";
+import { play, unpitched } from "./lib/sampler";
 
 export function generatePinAudio(reel: Reel): string {
   const params = pinSchema.parse(reel.illusion.props);
@@ -20,26 +23,29 @@ export function generatePinAudio(reel: Reel): string {
   const p = { ...params, loopSec: L };
   const pins = layout(p);
   const out = stereo(L);
-  const r = rng(reel.seed, "pin-sfx");
+  const r = rng(reel.seed, "pin-sfx-calm");
   const offset = params.startAt * L; // pin time = video time + offset
   const vt = (pt: number) => (((pt - offset) % L) + L) % L;
   const span = params.grid * params.spacing;
-  let ticks = 0;
+  let taps = 0;
 
-  // 1) ticks
+  // 1) soft taps
   pins.forEach((pin, i) => {
-    if (i % params.voiceEvery !== 0) return;
-    const pan = 0.5 + 0.45 * ((pin.x - pin.z) / span);
-    const centre = 3500 + r() * 4000;
+    if (i % (params.voiceEvery * 3) !== 0) return;
+    const pan = 0.5 + 0.4 * ((pin.x - pin.z) / span);
+    const f = 420 + r() * 520; // wood/felt range, random so it never forms a melody
+    const amp = 0.05 * (0.5 + 0.5 * pin.target);
     for (const tp of peakTimes(pin, p)) {
-      const bp = new Biquad().set("bp", centre, 2.2);
-      const amp = 0.05 * (0.6 + 0.4 * r());
-      addWrapped(out, vt(tp), 0.03, pan, (t) => bp.run(r() * 2 - 1) * Math.exp(-t * 220) * amp);
-      ticks++;
+      const ff = f * (0.97 + r() * 0.06);
+      addWrapped(out, vt(tp), 0.09, pan, (t) => {
+        const env = Math.min(1, t / 0.0015) * Math.exp(-t * 48);
+        return (Math.sin(2 * Math.PI * ff * t * (1 - 0.06 * t)) + 0.25 * Math.sin(2 * Math.PI * ff * 2.6 * t) * Math.exp(-t * 90)) * env * amp;
+      });
+      taps++;
     }
   });
 
-  // 2) motion whoosh: mean pin speed sampled every 10 ms (subset of pins)
+  // 2) air: mean pin speed every 10 ms (subset), smoothed, drives a dark low-passed noise
   const step = 0.01, nS = Math.round(L / step);
   const speed = new Float32Array(nS);
   const sub = pins.filter((_, i) => i % 7 === 0);
@@ -53,27 +59,27 @@ export function generatePinAudio(reel: Reel): string {
   }
   const [Lc, Rc] = out;
   const bl = new Biquad(), br = new Biquad();
+  let e = 0;
   for (let i = 0; i < Lc.length; i++) {
     const x = (i / SR) / step, k0 = Math.floor(x) % nS, k1 = (k0 + 1) % nS;
-    const e = (speed[k0] * (1 - (x % 1)) + speed[k1] * (x % 1)) / maxS;
-    if (i % 64 === 0) { bl.set("bp", 300 + 2200 * e, 0.8); br.set("bp", 340 + 2400 * e, 0.8); }
-    Lc[i] += bl.run(r() * 2 - 1) * e * 0.35;
-    Rc[i] += br.run(r() * 2 - 1) * e * 0.35;
+    const target = (speed[k0] * (1 - (x % 1)) + speed[k1] * (x % 1)) / maxS;
+    e += (target - e) * 0.0004; // ~50 ms smoothing
+    if (i % 128 === 0) { bl.set("lp", 260 + 700 * e, 0.6); br.set("lp", 280 + 760 * e, 0.6); }
+    const g = 0.035 + Math.pow(e, 1.4) * 0.5; // soft room-tone floor: never dead silent
+    Lc[i] += bl.run(r() * 2 - 1) * g;
+    Rc[i] += br.run(r() * 2 - 1) * g;
   }
 
-  // 3) lock: pins settle into the picture (pin time L/2)
-  const lockAt = vt(L / 2) - 0.6;
-  for (let k = 0; k < 40; k++) {
-    const hp = new Biquad().set("hp", 2500 + r() * 3000, 0.9);
-    const t = lockAt - 0.9 * Math.pow(1 - k / 40, 1.6);
-    addWrapped(out, t, 0.04, 0.2 + r() * 0.6, (tt) => hp.run(r() * 2 - 1) * Math.exp(-tt * 160) * 0.22);
-  }
-  addWrapped(out, lockAt, 1.2, 0.5, (t) => Math.sin(2 * Math.PI * (42 + 30 * Math.exp(-t * 12)) * t) * Math.exp(-t * 3.5) * Math.min(1, t * 300) * 0.8);
-  const air = new Biquad().set("hp", 5000, 0.7);
-  addWrapped(out, lockAt, 2.5, 0.5, (t) => air.run(r() * 2 - 1) * Math.exp(-t * 1.6) * Math.min(1, t * 20) * 0.08);
+  // 3) settle into the picture (pin time L/2)
+  const lockAt = vt(L / 2) - 0.5;
+  play(out, unpitched("woodblock", 0), lockAt, 0.35, 0.5, 0.25, 0.4, 0.75);
+  addWrapped(out, lockAt, 1.6, 0.5, (t) => Math.sin(2 * Math.PI * (52 + 14 * Math.exp(-t * 6)) * t) * Math.min(1, t / 0.04) * Math.exp(-t * 2.2) * 0.45);
+  const exhale = new Biquad().set("lp", 1400, 0.6);
+  addWrapped(out, lockAt + 0.1, 2.8, 0.5, (t) => exhale.run(r() * 2 - 1) * Math.min(1, t / 0.4) * Math.exp(-t * 1.3) * 0.12);
 
+  reverb(out, { room: 0.78, damp: 0.5, wet: 0.22 });
   const rel = `generated/${reel.id}-sfx.wav`;
-  writeWav(join(ASSETS, rel), out, 1.3);
-  console.log(`wrote assets/${rel} (${ticks} ticks, motion whoosh, lock at ${lockAt.toFixed(2)} s)`);
+  writeWav(join(ASSETS, rel), out, 1.1);
+  console.log(`wrote assets/${rel} (${taps} soft taps, motion air, settle at ${lockAt.toFixed(2)} s)`);
   return rel;
 }
