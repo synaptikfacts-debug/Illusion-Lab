@@ -56,7 +56,7 @@ export const HookText: React.FC<{ reel: Reel; tl: Timeline }> = ({ reel, tl }) =
   const pop = interpolate(f, [0, 10], [1, 1.04], { extrapolateRight: "clamp" });
   return (
     <SafeText anchor="top" offset={40} opacity={out} scale={pop}>
-      <div style={{ fontSize: 118, fontWeight: 900, letterSpacing: -1, textTransform: "uppercase" }}>{reel.hook.text}</div>
+      <div style={{ fontSize: 96, fontWeight: 900, letterSpacing: -1, textTransform: "uppercase" }}>{reel.hook.text}</div>
       {reel.hook.sub && (
         <div style={{ fontSize: 54, fontWeight: 700, marginTop: 18, color: reel.palette.fg }}>{reel.hook.sub}</div>
       )}
@@ -83,8 +83,9 @@ export const Countdown: React.FC<{ reel: Reel; tl: Timeline }> = ({ reel, tl }) 
   const op = fade(f, tl.challenge.start, tl.challenge.end, 10);
   const barW = s.w * 0.6;
   return (
-    <SafeText anchor="bottom" offset={30} opacity={op}>
-      <div style={{ fontSize: 120, fontWeight: 900 }}>{remaining}</div>
+    // under the instruction, away from the illusion (text on the stare image weakens the effect)
+    <SafeText anchor="top" offset={115} opacity={op}>
+      <div style={{ fontSize: 104, fontWeight: 900 }}>{remaining}</div>
       <div
         style={{
           margin: "14px auto 0",
@@ -150,7 +151,7 @@ export const IntensityNotice: React.FC<{ reel: Reel; tl: Timeline }> = ({ reel, 
         position: "absolute",
         left: s.x,
         width: s.w,
-        top: s.y + s.h - 270, // above the countdown block
+        top: s.y + s.h - 70,
         textAlign: "center",
         opacity: op,
         fontFamily: FONT,
