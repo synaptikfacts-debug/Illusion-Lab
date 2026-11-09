@@ -70,8 +70,9 @@ export async function renderReel(id: string, opts: { serveUrl?: string; draft?: 
 
   if (assetPaths(reel).some((p) => /inhouse-/.test(p) && !existsSync(p))) generateInhouseAudio();
   // generated, picture-synced audio (always rebuilt: it depends on the reel params)
-  if (reel.illusion.type === "bounceField") generateBounceAudio(reel);
-  if (reel.illusion.type === "pinWall") generatePinAudio(reel);
+  const usesGenerated = assetPaths(reel).some((p) => /[\\/]generated[\\/]/.test(p));
+  if (usesGenerated && reel.illusion.type === "bounceField") generateBounceAudio(reel);
+  if (usesGenerated && reel.illusion.type === "pinWall") generatePinAudio(reel);
   const missing = assetPaths(reel).filter((p) => !existsSync(p));
   if (missing.length) throw new Error(`Missing assets:\n  ${missing.join("\n  ")}`);
 
