@@ -1,0 +1,36 @@
+{
+  "name": "illusion-lab",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Code-driven reel factory: optical illusion challenge + impossible transformation",
+  "type": "module",
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render": "tsx scripts/render.ts",
+    "render:all": "tsx scripts/render-all.ts",
+    "new": "tsx scripts/new.ts",
+    "assets": "tsx scripts/gen-audio.ts",
+    "flashcheck": "tsx scripts/flashcheck.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@react-three/fiber": "9.8.2",
+    "@remotion/bundler": "4.0.539",
+    "@remotion/cli": "4.0.539",
+    "@remotion/renderer": "4.0.539",
+    "@remotion/three": "4.0.539",
+    "@remotion/zod-types": "4.0.539",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "remotion": "4.0.539",
+    "three": "0.187.0",
+    "zod": "4.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "@types/react": "19.3.0",
+    "@types/three": "0.187.0",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3"
+  }
+}
