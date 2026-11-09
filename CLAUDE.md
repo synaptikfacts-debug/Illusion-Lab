@@ -11,3 +11,11 @@ Never upload or post anything to any platform; `publish/` is a local folder the 
 - Everything must be deterministic: frame-driven animation, seeded randomness (src/core/seed.ts).
 - Platform limits live only in config/platforms.ts; re-check sources there before relying on them.
 - Package versions are pinned exactly; all @remotion/* packages must stay on the same version.
+
+## RULE: references are a MODEL, never a copy (owner, Nov 9 2026 - main goal)
+When the owner shares a reel as a reference ("do something like this"), take the FORMULA, not the content:
+what makes it work (e.g. thousands of simple objects, each with its own rhythm -> emergent shapes, sound triggered
+by the motion, clean stage, perfect loop, no text). Then invent a NEW mechanic, object, stage, palette and payoff.
+Never reproduce its specific setup, layout, camera, colours or effect. Before building, write one line:
+"Reference does X. Ours does Y instead" and check Y is clearly different. Reel 0002 (bounce orbs) broke this rule
+and is archived in reels/archive/.

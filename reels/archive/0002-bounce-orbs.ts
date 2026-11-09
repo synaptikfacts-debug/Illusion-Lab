@@ -1,4 +1,6 @@
-import { defineReel } from "../src/core/define";
+// ARCHIVED (Nov 9 2026): too close to the reference reel (particlesflow bouncing orbs). Not for upload.
+// Kept only as code reference for bounceField. Files in reels/archive/ are not rendered.
+import { defineReel } from "../../src/core/define";
 
 // 3000 glossy orbs, each bouncing at its own rhythm. They start as a flat disc, fold into funnels, cylinders,
 // domes and waves (most complex at 15 s), then unwind and land back in a flat disc exactly at 30 s (loop).
