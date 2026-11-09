@@ -10,6 +10,7 @@ import type { Reel } from "../src/core/schema";
 import { resolveTime, timeline } from "../src/core/timing";
 import { webpackOverride } from "../src/webpack-override";
 import { generateInhouseAudio } from "./gen-audio";
+import { generateBounceAudio } from "./gen-bounce-audio";
 import { loopDiff, normaliseLoudness } from "./lib/checks";
 import { run } from "./lib/ffmpeg";
 import { flashCheck } from "./lib/flash";
@@ -67,6 +68,8 @@ export async function renderReel(id: string, opts: { serveUrl?: string; draft?: 
   if (draft && errors.length) console.log(`(preflight warnings, ignored in draft)\n  ${errors.join("\n  ")}`);
 
   if (assetPaths(reel).some((p) => /inhouse-/.test(p) && !existsSync(p))) generateInhouseAudio();
+  // generated, picture-synced audio (always rebuilt: it depends on the reel params)
+  if (reel.illusion.type === "bounceField") generateBounceAudio(reel);
   const missing = assetPaths(reel).filter((p) => !existsSync(p));
   if (missing.length) throw new Error(`Missing assets:\n  ${missing.join("\n  ")}`);
 
