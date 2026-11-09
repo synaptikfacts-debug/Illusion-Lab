@@ -28,15 +28,15 @@ export default defineReel({
   publish: {
     youtube: {
       title: "2304 pins are hiding a picture",
-      caption: "Every pin plays its own note. Watch until they stop moving.",
+      caption: "2304 pins, each moving to its own rhythm. Watch until they stop moving.",
       hashtags: ["#shorts", "#satisfying", "#asmr"],
     },
     instagram: {
-      caption: "2304 pins, each playing its own note. Wait for what they draw.",
+      caption: "2304 pins, each moving to its own rhythm. Wait for what they draw.",
       hashtags: ["#reels", "#oddlysatisfying", "#asmr", "#3danimation", "#generativeart"],
     },
-    facebook: { caption: "2304 pins, each playing its own note. Wait for what they draw.", hashtags: ["#reels", "#satisfying"] },
+    facebook: { caption: "2304 pins, each moving to its own rhythm. Wait for what they draw.", hashtags: ["#reels", "#satisfying"] },
     tiktok: { caption: "wait for what the pins draw", hashtags: ["#fyp", "#oddlysatisfying", "#asmr", "#3danimation"] },
-    x: { caption: "2304 pins, each playing its own note. Wait for what they draw.", hashtags: ["#satisfying"] },
+    x: { caption: "2304 pins, each moving to its own rhythm. Wait for what they draw.", hashtags: ["#satisfying"] },
   },
 });
