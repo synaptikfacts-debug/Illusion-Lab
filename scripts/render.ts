@@ -5,7 +5,7 @@ import { bundle } from "@remotion/bundler";
 import { renderMedia, renderStill, selectComposition } from "@remotion/renderer";
 import { copyFileSync, existsSync, mkdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { PLATFORMS, type PlatformId } from "../config/platforms";
+import { DELIVERY_MAX_MIB, PLATFORMS, type PlatformId } from "../config/platforms";
 import type { Reel } from "../src/core/schema";
 import { resolveTime, timeline } from "../src/core/timing";
 import { webpackOverride } from "../src/webpack-override";
@@ -141,19 +141,22 @@ export async function renderReel(id: string, opts: { serveUrl?: string; draft?: 
   for (const [pid, spec] of Object.entries(PLATFORMS) as [PlatformId, (typeof PLATFORMS)[PlatformId]][]) {
     const out = join(pub, `${spec.filePrefix}_${id}.mp4`);
     const gop = String(spec.fps * 2);
+    // fit under the delivery cap (MiB) with 8% headroom for container + VBR overshoot
+    const capKbps = Math.floor(((DELIVERY_MAX_MIB * 8 * 1048576) / 1000 / (composition.durationInFrames / reel.fps)) * 0.92) - spec.audioKbps;
+    const vKbps = Math.min(spec.videoKbps, capKbps), maxKbps = Math.min(spec.maxrateKbps, Math.round(capKbps * 1.25));
     await step(`export ${spec.label} ${spec.width}x${spec.height}`, () =>
       run("ffmpeg", [
         "-y", "-v", "error", "-i", master, "-i", mixNorm, "-map", "0:v:0", "-map", "1:a:0",
         "-vf", `scale=${spec.width}:${spec.height}:flags=lanczos,fps=${spec.fps}`,
         "-c:v", "libx264", "-profile:v", "high", "-level:v", "4.2", "-preset", "slow", "-pix_fmt", "yuv420p",
-        "-b:v", `${spec.videoKbps}k`, "-maxrate", `${spec.maxrateKbps}k`, "-bufsize", `${spec.maxrateKbps * 2}k`,
+        "-b:v", `${vKbps}k`, "-maxrate", `${maxKbps}k`, "-bufsize", `${maxKbps * 2}k`,
         "-g", gop, "-keyint_min", gop, "-sc_threshold", "0",
         "-c:a", "aac", "-b:a", `${spec.audioKbps}k`, "-ar", String(spec.sampleRate), "-ac", "2",
         "-shortest", "-movflags", "+faststart", out,
       ]),
     );
     const mb = statSync(out).size / 1024 / 1024;
-    if (mb > spec.maxFileMB) throw new Error(`${spec.label}: ${mb.toFixed(1)} MB is over ${spec.maxFileMB} MB`);
+    if (mb > Math.min(spec.maxFileMB, DELIVERY_MAX_MIB)) throw new Error(`${spec.label}: ${mb.toFixed(1)} MiB is over the limit`);
     const text = reel.publish[pid];
     writeFileSync(
       join(pub, `${pid}.txt`),

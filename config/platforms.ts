@@ -38,6 +38,9 @@ export const FLASH_RULES = {
   redDelta: 20, // WCAG red-flash measure: change in (R-G-B)*320 where R/(R+G+B) >= 0.8
 } as const;
 
+/** Owner rule: every delivered file must be under 30 MiB so it reaches the phone. Video bitrate is lowered to fit. */
+export const DELIVERY_MAX_MIB = 29;
+
 export const LOUDNESS = { integratedLUFS: -14, truePeakDb: -1, lra: 11 } as const;
 
 export const PLATFORMS: Record<PlatformId, PlatformSpec> = {
