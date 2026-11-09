@@ -148,6 +148,25 @@ function whoosh(seed: number): Stereo {
   return out;
 }
 
+/** Lub-dub every 0.95 s (matches the heart beat() in transforms/morphChain). 6 s. */
+function heartbeat(): Stereo {
+  const sec = 6, out = buf(sec), [L, R] = out;
+  for (let b = 0; b * 0.95 < sec - 0.5; b++) {
+    for (const [off, amp] of [[0.05, 1], [0.27, 0.6]]) {
+      const s0 = Math.round((b * 0.95 + off - 0.02) * SR);
+      let ph = 0;
+      for (let i = 0; i < SR * 0.35 && s0 + i < L.length; i++) {
+        const t = i / SR, fr = 48 + 40 * Math.exp(-t * 30);
+        ph += (2 * Math.PI * fr) / SR;
+        const v = Math.sin(ph) * Math.exp(-t * 14) * Math.min(1, t * 300) * amp;
+        L[s0 + i] += v; R[s0 + i] += v;
+      }
+    }
+  }
+  room(out, 0.2);
+  return out;
+}
+
 export function generateInhouseAudio() {
   const music = join(ROOT, "assets/music"), sfx = join(ROOT, "assets/sfx");
   mkdirSync(music, { recursive: true });
@@ -156,6 +175,7 @@ export function generateInhouseAudio() {
   writeWav(join(sfx, "inhouse-riser.wav"), riser(7));
   writeWav(join(sfx, "inhouse-impact.wav"), impact(7));
   writeWav(join(sfx, "inhouse-whoosh.wav"), whoosh(7));
+  writeWav(join(sfx, "inhouse-heartbeat.wav"), heartbeat());
 }
 
 if (/gen-audio\.ts$/.test(process.argv[1] ?? "")) generateInhouseAudio();

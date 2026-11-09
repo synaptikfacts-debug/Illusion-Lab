@@ -45,3 +45,25 @@ export function sampleSurface(n: number, t: number, sats: Sat[], seed: number): 
   }
   return out;
 }
+
+/** n points on a 3D heart (Taubin heart surface). Rays from the centre, bisected to the surface: no creases. */
+export function sampleHeart(n: number, seed: number): Float32Array {
+  const out = new Float32Array(n * 3), r = rng(seed, 'heart'), S = 0.72;
+  const f = (x: number, y: number, z: number) => {
+    const a = x * x + 2.25 * y * y + z * z - 1;
+    return a * a * a - x * x * z * z * z - 0.1125 * y * y * z * z * z;
+  };
+  for (let i = 0; i < n; i++) {
+    const u = r() * 2 - 1, th = r() * Math.PI * 2, sq = Math.sqrt(1 - u * u);
+    const dx = sq * Math.cos(th), dy = sq * Math.sin(th) * 0.75, dz = u;
+    let lo = 0, hi = 0.02;
+    while (hi < 2.5 && f(dx * hi, dy * hi, dz * hi) < 0) { lo = hi; hi += 0.02; }
+    for (let k = 0; k < 24; k++) {
+      const m = (lo + hi) / 2;
+      if (f(dx * m, dy * m, dz * m) < 0) lo = m; else hi = m;
+    }
+    const m = (lo + hi) / 2;
+    out[i * 3] = dx * m * S; out[i * 3 + 1] = dz * m * S + 0.05; out[i * 3 + 2] = dy * m * S;
+  }
+  return out;
+}

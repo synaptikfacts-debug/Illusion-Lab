@@ -51,7 +51,7 @@ const fade = (f: number, a: number, b: number, len = 8) =>
 /** Hook: fully visible on frame 0 (no intro), leaves quickly when the challenge starts. */
 export const HookText: React.FC<{ reel: Reel; tl: Timeline }> = ({ reel, tl }) => {
   const f = useCurrentFrame();
-  if (f >= tl.hook.end + 10) return null;
+  if (!reel.hook.text || f >= tl.hook.end + 10) return null;
   const out = interpolate(f, [tl.hook.end - 2, tl.hook.end + 10], [1, 0], { extrapolateLeft: "clamp", extrapolateRight: "clamp" });
   const pop = interpolate(f, [0, 10], [1, 1.04], { extrapolateRight: "clamp" });
   return (
@@ -66,7 +66,7 @@ export const HookText: React.FC<{ reel: Reel; tl: Timeline }> = ({ reel, tl }) =
 
 export const InstructionText: React.FC<{ reel: Reel; tl: Timeline }> = ({ reel, tl }) => {
   const f = useCurrentFrame();
-  if (f < tl.challenge.start || f >= tl.challenge.end) return null;
+  if (!reel.challenge.instruction || f < tl.challenge.start || f >= tl.challenge.end) return null;
   return (
     <SafeText anchor="top" offset={30} opacity={fade(f, tl.challenge.start + 4, tl.challenge.end)}>
       <div style={{ fontSize: 64, fontWeight: 900, textTransform: "uppercase" }}>{reel.challenge.instruction}</div>
@@ -183,7 +183,8 @@ export const SafeZoneOverlay: React.FC = () => {
 };
 
 /** Cover still: big title over the chosen frame. HUD overlays are hidden in cover mode. */
-export const CoverOverlay: React.FC<{ reel: Reel }> = ({ reel }) => (
+export const CoverOverlay: React.FC<{ reel: Reel }> = ({ reel }) =>
+  !reel.cover.title ? null : (
   <AbsoluteFill>
     <AbsoluteFill style={{ background: "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0) 45%)" }} />
     <SafeText anchor="top" offset={20}>

@@ -1,18 +1,20 @@
 import type { EffectDef } from "./effect";
 import { expandingRings } from "../illusions/expandingRings";
 import { livingAfterimage } from "../illusions/livingAfterimage";
-import { particleGalaxy } from "../transforms/particleGalaxy";
+import { livingSculpture } from "../illusions/livingSculpture";
+import { morphChain } from "../transforms/morphChain";
 import { vortexBloom } from "../transforms/vortexBloom";
 
 // Add new effects here (one line each). Reels refer to them by key.
 export const ILLUSIONS: Record<string, EffectDef> = {
   expandingRings,
   livingAfterimage,
+  livingSculpture,
 };
 
 export const TRANSFORMS: Record<string, EffectDef> = {
   vortexBloom,
-  particleGalaxy,
+  morphChain,
 };
 
 export function getEffect(kind: "illusion" | "transform", type: string): EffectDef {

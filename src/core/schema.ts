@@ -26,19 +26,21 @@ export const ReelSchema = z
     height: z.number().int().default(1920),
     seed: z.number().int(),
     palette: z.object({ bg: hex, fg: hex, accent: hex, accent2: hex }),
-    hook: z.object({ text: z.string(), sub: z.string().optional() }),
+    /** All on-screen words are optional: leave them out for a pure visual reel. */
+    hook: z.object({ text: z.string().optional(), sub: z.string().optional() }).default({}),
     challenge: z.object({
-      instruction: z.string(),
+      instruction: z.string().optional(),
       countdown: z.boolean().default(true),
       /** Illusion focal point in frame fractions; must sit inside the safe zone. */
       focus: z.object({ x: z.number(), y: z.number() }).default({ x: 0.5, y: 0.5 }),
-    }),
+    })
+      .default({ countdown: false, focus: { x: 0.5, y: 0.5 } }),
     reveal: z.object({ text: z.string().optional() }).default({}),
     endText: z.string().optional(),
     phases: z.object({
-      hook: z.number().min(0.5).max(3),
-      challenge: z.number().min(1),
-      reveal: z.number().min(0.5),
+      hook: z.number().min(0.5).max(8),
+      challenge: z.number().min(0),
+      reveal: z.number().min(0),
       transform: z.number().min(1),
     }),
     /** Last N seconds crossfade into frame 0 so the reel loops seamlessly. */
@@ -61,7 +63,7 @@ export const ReelSchema = z
       .default({ music: null, musicVolume: 0.6, vo: null, voVolume: 1, sfx: [] }),
     /** Burned-in captions (required for every voiceover line). */
     captions: z.array(z.object({ at: TimeRef, dur: z.number().positive(), text: z.string() })).default([]),
-    cover: z.object({ at: TimeRef.default(0.8), title: z.string(), sub: z.string().optional() }),
+    cover: z.object({ at: TimeRef.default(0.8), title: z.string().optional(), sub: z.string().optional() }),
     publish: z.object({
       youtube: PlatformText,
       instagram: PlatformText,

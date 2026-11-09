@@ -18,6 +18,9 @@ uniform vec3 uTint;
 uniform vec3 uTint2;
 uniform vec4 uSat[6];   // droplets: orbit radius, speed, phase, size
 uniform float uCamY;    // camera height: puts the sculpture on the focus point
+uniform float uRot;     // whole-scene orbit angle (rad)
+uniform float uScale;   // whole-scene scale (breathing push-in)
+uniform float uShock;   // 0..1 shockwave progress (1 = none)
 
 float hash(vec2 p) {
   p = fract(p * vec2(123.34, 456.21));
@@ -47,9 +50,16 @@ float map(vec3 p) {
   return d;
 }
 
+float mapW(vec3 p) {
+  float c = cos(uRot), s = sin(uRot);
+  vec3 q = p / uScale;
+  q = vec3(c * q.x - s * q.z, q.y, s * q.x + c * q.z);
+  return map(q) * uScale;
+}
+
 vec3 calcNormal(vec3 p) {
   const vec2 e = vec2(0.0015, -0.0015);
-  return normalize(e.xyy * map(p + e.xyy) + e.yyx * map(p + e.yyx) + e.yxy * map(p + e.yxy) + e.xxx * map(p + e.xxx));
+  return normalize(e.xyy * mapW(p + e.xyy) + e.yyx * mapW(p + e.yyx) + e.yxy * mapW(p + e.yxy) + e.xxx * mapW(p + e.xxx));
 }
 
 vec3 env(vec3 r) {
@@ -91,18 +101,25 @@ void main() {
   vec3 ro = vec3(0.0, uCamY, 7.0);
   vec3 rd = normalize(vec3((vUv - 0.5) * 2.0 * vec2(uAspect, 1.0) * uTanHalf, -1.0));
   vec3 bg = background(q);
+  {
+    vec2 c = vec2(0.0, -uCamY / (7.0 * uTanHalf) * 0.5);
+    float r = length(q - c);
+    float R = uShock * 1.25;
+    float ring = exp(-pow((r - R) / 0.018, 2.0)) + 0.35 * exp(-pow((r - R * 0.8) / 0.05, 2.0));
+    bg += mix(uTint, vec3(1.0), 0.45) * ring * pow(1.0 - uShock, 2.0) * 0.55;
+  }
   float glow = 0.0;
   float hit = 0.0;
   vec3 obj = vec3(0.0);
 
   float b = dot(ro, rd);
-  float h = b * b - (dot(ro, ro) - 3.6);
+  float h = b * b - (dot(ro, ro) - 3.6 * uScale * uScale);
   if (h > 0.0 && uObj > 0.001) {
     float t = -b - sqrt(h);
     float tmax = -b + sqrt(h);
     for (int i = 0; i < 96; i++) {
       vec3 p = ro + rd * t;
-      float d = map(p);
+      float d = mapW(p);
       glow += exp(-d * 9.0) * 0.016;
       if (d < 0.0008) { hit = 1.0; break; }
       t += d * 0.9;
@@ -118,7 +135,7 @@ void main() {
       float ao = 0.0, sc = 1.0;
       for (int k = 1; k <= 4; k++) {
         float hh = 0.05 * float(k);
-        ao += (hh - map(p + n * hh)) * sc;
+        ao += (hh - mapW(p + n * hh)) * sc;
         sc *= 0.6;
       }
       ao = clamp(1.0 - 2.5 * ao, 0.35, 1.0);
