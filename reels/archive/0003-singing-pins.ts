@@ -1,4 +1,5 @@
-import { defineReel } from "../src/core/define";
+// ARCHIVED (Nov 10 2026): owner - no ending, not HD, sounds felt unrelated. Superseded by 0004-the-eye.
+import { defineReel } from "../../src/core/define";
 
 // Model (formula only): thousands of simple objects with their own rhythm, emergent shapes, motion-synced sound, loop.
 // Ours: a 48x48 wall of glowing pins on a dark mirror. Ripples and standing waves race across it, slow down,

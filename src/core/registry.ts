@@ -2,6 +2,7 @@ import type { EffectDef } from "./effect";
 import { bounceField, bounceFieldContinue } from "../illusions/bounceField";
 import { expandingRings } from "../illusions/expandingRings";
 import { pinWall, pinWallContinue } from "../illusions/pinWall";
+import { rodStory, rodStoryContinue } from "../illusions/rodStory";
 import { livingAfterimage } from "../illusions/livingAfterimage";
 import { livingSculpture } from "../illusions/livingSculpture";
 import { morphChain } from "../transforms/morphChain";
@@ -14,6 +15,7 @@ export const ILLUSIONS: Record<string, EffectDef> = {
   livingSculpture,
   bounceField,
   pinWall,
+  rodStory,
 };
 
 export const TRANSFORMS: Record<string, EffectDef> = {
@@ -21,6 +23,7 @@ export const TRANSFORMS: Record<string, EffectDef> = {
   morphChain,
   bounceFieldContinue,
   pinWallContinue,
+  rodStoryContinue,
 };
 
 export function getEffect(kind: "illusion" | "transform", type: string): EffectDef {

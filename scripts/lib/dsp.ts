@@ -63,7 +63,8 @@ export function writeWav(path: string, [L, R]: Stereo, drive = 1.2) {
  * Freeverb-style stereo reverb (8 damped combs + 4 allpasses per side). Loop-aware: the dry buffer is processed
  * twice in a row and the second pass is kept, so tails from the end of the loop ring into its start.
  */
-export function reverb([L, R]: Stereo, opts: { room?: number; damp?: number; wet?: number; preDelayMs?: number } = {}) {
+export function reverb([L, R]: Stereo, opts: { room?: number; damp?: number; wet?: number; preDelayMs?: number; loop?: boolean } = {}) {
+  const loop = opts.loop ?? true; // false: tails die at the end (reels with a real ending)
   const room = opts.room ?? 0.84, damp = opts.damp ?? 0.35, wet = opts.wet ?? 0.3;
   const sc = SR / 44100, spread = 23;
   const combs = [1116, 1188, 1277, 1356, 1422, 1491, 1557, 1617], alls = [556, 441, 341, 225];
@@ -73,9 +74,9 @@ export function reverb([L, R]: Stereo, opts: { room?: number; damp?: number; wet
     const cb = combs.map((d) => ({ buf: new Float32Array(Math.round((d + off) * sc)), i: 0, store: 0 }));
     const ab = alls.map((d) => ({ buf: new Float32Array(Math.round((d + off) * sc)), i: 0 }));
     const out = new Float32Array(n);
-    for (let pass = 0; pass < 2; pass++)
+    for (let pass = loop ? 0 : 1; pass < 2; pass++)
       for (let k = 0; k < n; k++) {
-        const x = input[(k - pre + n) % n] * 0.015;
+        const x = (loop || k >= pre ? input[(k - pre + n) % n] : 0) * 0.015;
         let y = 0;
         for (const c of cb) {
           const o = c.buf[c.i];

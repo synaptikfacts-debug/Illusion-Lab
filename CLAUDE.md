@@ -28,3 +28,13 @@ and is archived in reels/archive/.
   soft strings, harp; scripts/gen-music.ts), synced to the reel's big moment. Never synth grooves (owner: "cringe, AI slop").
 - SFX style: calm and satisfying (soft rounded taps, dark air, gentle settles), never harsh ticks or synth risers.
 - The pipeline does this automatically: `audio.music` / `audio.musicGen` go only into SHORT_ (platforms.ts `music: true`).
+
+## RULE: quality bar for every reel (owner, Nov 10 2026: "no ending, not HD, AI slop, cheap sounds")
+- STORY WITH AN ENDING: hook on frame 0 -> build -> payoff -> a clear, final ending moment (something settles, closes,
+  lands last), then quiet. Write the beat sheet in the reel file first. Loops are a bonus, never instead of an ending.
+- HD, REAL-LOOKING: physical materials (metal/glass with PBR + environment), raking key light + soft shadows, depth of
+  field on close shots, bloom only on true emissive parts, ACES, 2x supersampling (dpr 2). Fewer, bigger, readable
+  objects over thousands of tiny dots; fill the 9:16 frame. No film grain (kills the bitrate). Check native-res crops.
+- SOUND HAS A VISIBLE CAUSE: drive SFX from the same simulation as the picture (events -> sounds), use real recorded
+  samples (VSCO-2 percussion, Salamander piano), accents on every story beat, silence after the ending.
+- YouTube music follows the story beats and resolves on the ending (scripts/gen-music-story.ts is the model).

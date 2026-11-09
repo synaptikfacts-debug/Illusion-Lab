@@ -56,7 +56,7 @@ export const ReelSchema = z
         music: z.string().nullable().default(null),
         /** Generate a catchy in-house track for YouTube (scripts/gen-music.ts) instead of a file. */
         musicGen: z
-          .object({ bpm: z.number().default(120), dropAt: TimeRef.optional(), key: z.number().int().default(57), seed: z.number().int().default(1) })
+          .object({ style: z.enum(["loop", "rodStory"]).default("loop"), bpm: z.number().default(120), dropAt: TimeRef.optional(), key: z.number().int().default(57), seed: z.number().int().default(1) })
           .optional(),
         musicVolume: z.number().min(0).max(1).default(0.6),
         vo: z.string().nullable().default(null),
