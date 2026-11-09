@@ -19,3 +19,10 @@ by the motion, clean stage, perfect loop, no text). Then invent a NEW mechanic, 
 Never reproduce its specific setup, layout, camera, colours or effect. Before building, write one line:
 "Reference does X. Ours does Y instead" and check Y is clearly different. Reel 0002 (bounce orbs) broke this rule
 and is archived in reels/archive/.
+
+## RULE: sound (owner, Nov 9 2026)
+- EVERY version has sound effects synced to the motion (ticks, whooshes, impacts, textures). Never silent.
+- NO music on Instagram, TikTok, Facebook or X: the owner adds a trending track in the app. SFX must not be tonal
+  melodies that would clash with that track.
+- YouTube ONLY: SFX + a catchy background track made in-house (scripts/gen-music.ts), synced to the reel's big moment.
+- The pipeline does this automatically: `audio.music` / `audio.musicGen` go only into SHORT_ (platforms.ts `music: true`).

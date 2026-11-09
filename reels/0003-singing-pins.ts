@@ -3,7 +3,7 @@ import { defineReel } from "../src/core/define";
 // Model (formula only): thousands of simple objects with their own rhythm, emergent shapes, motion-synced sound, loop.
 // Ours: a 48x48 wall of glowing pins on a dark mirror. Ripples and standing waves race across it, slow down,
 // freeze into a hidden EYE (camera tilts over the top at ~11.1 s), dissolve back into waves and loop.
-// Delivered silent (owner adds own sound).
+// Sound: SFX from the pin physics on every version; YouTube also gets an in-house track that drops after the eye.
 const pins = {
   grid: 48,
   baseCycles: 20,
@@ -22,8 +22,12 @@ export default defineReel({
   loopTolerance: 6,
   illusion: { type: "pinWall", props: pins },
   transform: { type: "pinWallContinue", props: pins },
-  // silent: the owner adds their own sound (melody generator still available: add the generated file as an sfx cue)
-  audio: { sfx: [] },
+  // SFX on every version (pin ticks, motion whoosh, lock); catchy in-house music on YouTube only (owner rule)
+  audio: {
+    musicVolume: 0.55,
+    musicGen: { bpm: 120, dropAt: 11.1, key: 57, seed: 3 },
+    sfx: [{ at: 0, file: "generated/0003-singing-pins-sfx.wav", volume: 1 }],
+  },
   cover: { at: 11.1 },
   publish: {
     youtube: {

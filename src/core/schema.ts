@@ -52,7 +52,12 @@ export const ReelSchema = z
     postfx: z.array(EffectSchema).default([]),
     audio: z
       .object({
+        /** Music file (assets/...). YOUTUBE ONLY - other platforms get the SFX mix (owner adds trending music). */
         music: z.string().nullable().default(null),
+        /** Generate a catchy in-house track for YouTube (scripts/gen-music.ts) instead of a file. */
+        musicGen: z
+          .object({ bpm: z.number().default(120), dropAt: TimeRef.optional(), key: z.number().int().default(57), seed: z.number().int().default(1) })
+          .optional(),
         musicVolume: z.number().min(0).max(1).default(0.6),
         vo: z.string().nullable().default(null),
         voVolume: z.number().min(0).max(1).default(1),
@@ -89,5 +94,7 @@ export type Reel = z.output<typeof ReelSchema>;
 export const CompositionSchema = ReelSchema.safeExtend({
   showSafeZone: z.boolean().default(false),
   coverMode: z.boolean().default(false),
+  /** false = SFX-only mix (Instagram/TikTok/Facebook/X); true = with music (YouTube). */
+  withMusic: z.boolean().default(true),
 });
 export type CompositionProps = z.output<typeof CompositionSchema>;

@@ -54,7 +54,7 @@ const LoopBridge: React.FC<{ reel: ReelT; tl: Timeline }> = ({ reel, tl }) => {
 };
 
 export const Reel: React.FC<CompositionProps> = (props) => {
-  const { showSafeZone, coverMode, ...reel } = props;
+  const { showSafeZone, coverMode, withMusic, ...reel } = props;
   const tl = useMemo(() => timeline(reel), [reel.fps, reel.phases, reel.loopBridgeSec]);
   const transform = useEffectDef("transform", reel);
   return (
@@ -81,7 +81,7 @@ export const Reel: React.FC<CompositionProps> = (props) => {
           <LoopBridge reel={reel} tl={tl} />
         </Sequence>
       )}
-      <Soundtrack reel={reel} tl={tl} />
+      <Soundtrack reel={reel} tl={tl} withMusic={withMusic} />
       {coverMode && <CoverOverlay reel={reel} />}
       {showSafeZone && <SafeZoneOverlay />}
     </AbsoluteFill>

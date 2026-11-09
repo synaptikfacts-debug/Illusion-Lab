@@ -22,7 +22,7 @@ export const Root: React.FC = () => (
         id={reel.id}
         component={Reel}
         schema={CompositionSchema}
-        defaultProps={{ ...reel, showSafeZone: false, coverMode: false }}
+        defaultProps={{ ...reel, showSafeZone: false, coverMode: false, withMusic: true }}
         width={reel.width}
         height={reel.height}
         fps={reel.fps}

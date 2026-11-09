@@ -1,17 +1,17 @@
-// Melody for a pinWall reel, computed from the same physics as the picture: every Nth pin plays a soft
-// pentatonic pluck at the moment it reaches its top, so waves crossing the wall become harp sweeps.
-// When the pins freeze into the picture, a sustained chord swells in. Writes assets/generated/<id>-melody.wav.
-import { mkdirSync, writeFileSync } from "node:fs";
+// Sound effects for a pinWall reel, computed from the same physics as the picture (owner rule: SFX on every
+// version, no music/melody - the owner adds trending music on Instagram/TikTok):
+//  - ticks: a tiny non-pitched metal tick each time a pin peaks (waves crossing the wall = rattling sweeps)
+//  - motion: airy whoosh whose level and brightness follow how fast the whole wall is moving
+//  - lock: soft cascade + low thump when the pins freeze into the picture
+// Writes assets/generated/<id>-sfx.wav.
 import { join } from "node:path";
 import type { Reel } from "../src/core/schema";
+import { rng } from "../src/core/seed";
 import { timeline } from "../src/core/timing";
 import { pinSchema } from "../src/illusions/pinWall/schema";
-import { layout, peakTimes } from "../src/scenes/pins/physics";
+import { height, layout, peakTimes } from "../src/scenes/pins/physics";
+import { addWrapped, Biquad, SR, stereo, writeWav } from "./lib/dsp";
 import { ASSETS } from "./lib/paths";
-
-const SR = 48000;
-const PENTA = [0, 2, 4, 7, 9];
-const midiHz = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
 
 export function generatePinAudio(reel: Reel): string {
   const params = pinSchema.parse(reel.illusion.props);
@@ -19,66 +19,61 @@ export function generatePinAudio(reel: Reel): string {
   const L = params.loopSec || tl.total / tl.fps;
   const p = { ...params, loopSec: L };
   const pins = layout(p);
-  const n = Math.ceil(L * SR);
-  const Lc = new Float32Array(n), Rc = new Float32Array(n);
+  const out = stereo(L);
+  const r = rng(reel.seed, "pin-sfx");
   const offset = params.startAt * L; // pin time = video time + offset
-  const noteLen = Math.round(0.5 * SR);
-  let notes = 0;
+  const vt = (pt: number) => (((pt - offset) % L) + L) % L;
+  const span = params.grid * params.spacing;
+  let ticks = 0;
 
+  // 1) ticks
   pins.forEach((pin, i) => {
     if (i % params.voiceEvery !== 0) return;
-    // scale degree from position: sweeps across the wall become runs, rings become chords
-    const deg = Math.round((pin.u + 1) * 3 + (1 - pin.v) * 2.5);
-    const midi = params.rootNote + 12 * Math.floor(deg / 5) + PENTA[((deg % 5) + 5) % 5];
-    const f = midiHz(midi);
-    const pan = 0.5 + 0.4 * (pin.x - pin.z) / (params.grid * params.spacing);
-    const amp = 0.02 * (0.6 + 0.4 * pin.target);
+    const pan = 0.5 + 0.45 * ((pin.x - pin.z) / span);
+    const centre = 3500 + r() * 4000;
     for (const tp of peakTimes(pin, p)) {
-      const s0 = Math.round((((tp - offset) % L) + L) % L * SR);
-      notes++;
-      for (let k = 0; k < noteLen; k++) {
-        const t = k / SR;
-        const env = Math.exp(-t * 7) * Math.min(1, t * 900);
-        const v = (Math.sin(2 * Math.PI * f * t) + 0.25 * Math.sin(4 * Math.PI * f * t) * Math.exp(-t * 12)) * env * amp;
-        const j = (s0 + k) % n;
-        Lc[j] += v * (1 - pan);
-        Rc[j] += v * pan;
-      }
+      const bp = new Biquad().set("bp", centre, 2.2);
+      const amp = 0.05 * (0.6 + 0.4 * r());
+      addWrapped(out, vt(tp), 0.03, pan, (t) => bp.run(r() * 2 - 1) * Math.exp(-t * 220) * amp);
+      ticks++;
     }
   });
 
-  // chord swell when the picture forms (pin time L/2)
-  const center = (((L / 2 - offset) % L) + L) % L;
-  const chord = [0, 7, 14, 16, 24].map((s) => midiHz(params.rootNote - 12 + s));
-  for (let k = Math.round((center - 3) * SR); k < Math.round((center + 4) * SR); k++) {
-    const t = k / SR - center;
-    const env = Math.exp(-((t / (t < 0 ? 1.6 : 2.2)) ** 2));
-    let v = 0;
-    chord.forEach((f, ci) => (v += Math.sin(2 * Math.PI * f * t * (1 + ci * 0.0007)) / chord.length));
-    const j = ((k % n) + n) % n;
-    Lc[j] += v * env * 0.22;
-    Rc[j] += v * env * 0.22;
+  // 2) motion whoosh: mean pin speed sampled every 10 ms (subset of pins)
+  const step = 0.01, nS = Math.round(L / step);
+  const speed = new Float32Array(nS);
+  const sub = pins.filter((_, i) => i % 7 === 0);
+  let maxS = 1e-9;
+  for (let k = 0; k < nS; k++) {
+    const pt = k * step + offset;
+    let s = 0;
+    for (const pin of sub) s += Math.abs(height(pin, p, pt + 0.005) - height(pin, p, pt - 0.005)) / 0.01;
+    speed[k] = s / sub.length;
+    maxS = Math.max(maxS, speed[k]);
+  }
+  const [Lc, Rc] = out;
+  const bl = new Biquad(), br = new Biquad();
+  for (let i = 0; i < Lc.length; i++) {
+    const x = (i / SR) / step, k0 = Math.floor(x) % nS, k1 = (k0 + 1) % nS;
+    const e = (speed[k0] * (1 - (x % 1)) + speed[k1] * (x % 1)) / maxS;
+    if (i % 64 === 0) { bl.set("bp", 300 + 2200 * e, 0.8); br.set("bp", 340 + 2400 * e, 0.8); }
+    Lc[i] += bl.run(r() * 2 - 1) * e * 0.35;
+    Rc[i] += br.run(r() * 2 - 1) * e * 0.35;
   }
 
-  // gentle limiter + normalise to -1 dBFS (loudness is set later in the pipeline)
-  let peak = 1e-9;
-  for (let i = 0; i < n; i++) {
-    Lc[i] = Math.tanh(Lc[i] * 1.2);
-    Rc[i] = Math.tanh(Rc[i] * 1.2);
-    peak = Math.max(peak, Math.abs(Lc[i]), Math.abs(Rc[i]));
+  // 3) lock: pins settle into the picture (pin time L/2)
+  const lockAt = vt(L / 2) - 0.6;
+  for (let k = 0; k < 40; k++) {
+    const hp = new Biquad().set("hp", 2500 + r() * 3000, 0.9);
+    const t = lockAt - 0.9 * Math.pow(1 - k / 40, 1.6);
+    addWrapped(out, t, 0.04, 0.2 + r() * 0.6, (tt) => hp.run(r() * 2 - 1) * Math.exp(-tt * 160) * 0.22);
   }
-  const g = 0.89 / peak, data = Buffer.alloc(n * 4);
-  for (let i = 0; i < n; i++) {
-    data.writeInt16LE(Math.round(Lc[i] * g * 32767), i * 4);
-    data.writeInt16LE(Math.round(Rc[i] * g * 32767), i * 4 + 2);
-  }
-  const h = Buffer.alloc(44);
-  h.write("RIFF", 0); h.writeUInt32LE(36 + data.length, 4); h.write("WAVE", 8); h.write("fmt ", 12);
-  h.writeUInt32LE(16, 16); h.writeUInt16LE(1, 20); h.writeUInt16LE(2, 22); h.writeUInt32LE(SR, 24);
-  h.writeUInt32LE(SR * 4, 28); h.writeUInt16LE(4, 32); h.writeUInt16LE(16, 34); h.write("data", 36); h.writeUInt32LE(data.length, 40);
-  const rel = `generated/${reel.id}-melody.wav`;
-  mkdirSync(join(ASSETS, "generated"), { recursive: true });
-  writeFileSync(join(ASSETS, rel), Buffer.concat([h, data]));
-  console.log(`wrote assets/${rel} (${notes} pin notes, chord at ${center.toFixed(2)} s)`);
+  addWrapped(out, lockAt, 1.2, 0.5, (t) => Math.sin(2 * Math.PI * (42 + 30 * Math.exp(-t * 12)) * t) * Math.exp(-t * 3.5) * Math.min(1, t * 300) * 0.8);
+  const air = new Biquad().set("hp", 5000, 0.7);
+  addWrapped(out, lockAt, 2.5, 0.5, (t) => air.run(r() * 2 - 1) * Math.exp(-t * 1.6) * Math.min(1, t * 20) * 0.08);
+
+  const rel = `generated/${reel.id}-sfx.wav`;
+  writeWav(join(ASSETS, rel), out, 1.3);
+  console.log(`wrote assets/${rel} (${ticks} ticks, motion whoosh, lock at ${lockAt.toFixed(2)} s)`);
   return rel;
 }

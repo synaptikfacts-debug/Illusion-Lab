@@ -12,6 +12,7 @@ import { webpackOverride } from "../src/webpack-override";
 import { generateInhouseAudio } from "./gen-audio";
 import { generateBounceAudio } from "./gen-bounce-audio";
 import { generatePinAudio } from "./gen-pin-audio";
+import { generateMusic } from "./gen-music";
 import { loopDiff, normaliseLoudness } from "./lib/checks";
 import { run } from "./lib/ffmpeg";
 import { flashCheck } from "./lib/flash";
@@ -73,6 +74,7 @@ export async function renderReel(id: string, opts: { serveUrl?: string; draft?: 
   const usesGenerated = assetPaths(reel).some((p) => /[\\/]generated[\\/]/.test(p));
   if (usesGenerated && reel.illusion.type === "bounceField") generateBounceAudio(reel);
   if (usesGenerated && reel.illusion.type === "pinWall") generatePinAudio(reel);
+  if (reel.audio.musicGen) generateMusic(reel);
   const missing = assetPaths(reel).filter((p) => !existsSync(p));
   if (missing.length) throw new Error(`Missing assets:\n  ${missing.join("\n  ")}`);
 
@@ -81,8 +83,9 @@ export async function renderReel(id: string, opts: { serveUrl?: string; draft?: 
   const serveUrl = opts.serveUrl ?? (await bundleProject());
   const composition = await selectComposition({ serveUrl, id, inputProps: {}, ...BROWSER });
   const master = join(dir, draft ? "draft-video.mp4" : "master.mp4");
-  const mix = join(dir, "mix.wav");
-  const mixNorm = join(dir, "mix-norm.wav");
+  const hasMusic = !!(reel.audio.music || reel.audio.musicGen);
+  const sfxMix = join(dir, "mix-sfx.wav"), sfxNorm = join(dir, "mix-sfx-norm.wav");
+  const musicMix = join(dir, "mix-music.wav"), musicNorm = join(dir, "mix-music-norm.wav");
 
   let lastPct = -1;
   await step(`render video ${composition.durationInFrames} frames @ ${draft ? "540x960" : "1080x1920"}`, () =>
@@ -104,34 +107,48 @@ export async function renderReel(id: string, opts: { serveUrl?: string; draft?: 
       },
     }),
   );
-  await step("render audio", () =>
-    renderMedia({ composition, serveUrl, codec: "wav", outputLocation: mix, ...BROWSER }),
+  // two mixes: SFX only (Instagram/TikTok/Facebook/X) and SFX + music (YouTube)
+  const audioComp = (withMusic: boolean) => selectComposition({ serveUrl, id, inputProps: { withMusic }, ...BROWSER });
+  await step("render SFX mix", async () =>
+    renderMedia({ composition: await audioComp(false), serveUrl, codec: "wav", outputLocation: sfxMix, inputProps: { withMusic: false }, ...BROWSER }),
   );
+  if (hasMusic)
+    await step("render music mix (YouTube)", async () =>
+      renderMedia({ composition: await audioComp(true), serveUrl, codec: "wav", outputLocation: musicMix, inputProps: { withMusic: true }, ...BROWSER }),
+    );
 
   const flash = await step("photosensitivity check", () => flashCheck(master));
   const loop = await step("loop check", () => loopDiff(master, composition.durationInFrames));
-  const loud = await step("loudness -14 LUFS", () => normaliseLoudness(mix, mixNorm));
-  const report = { id, draft, seconds: composition.durationInFrames / reel.fps, flash, loop: { diff: loop, tolerance: reel.loopTolerance }, loudness: loud };
+  const loud = await step("loudness -14 LUFS (SFX mix)", () => normaliseLoudness(sfxMix, sfxNorm));
+  const loudMusic = hasMusic ? await step("loudness -14 LUFS (music mix)", () => normaliseLoudness(musicMix, musicNorm)) : null;
+  const mixFor = (music: boolean) => (music && hasMusic ? musicNorm : sfxNorm);
+  const report = { id, draft, seconds: composition.durationInFrames / reel.fps, flash, loop: { diff: loop, tolerance: reel.loopTolerance }, loudness: { sfx: loud, music: loudMusic } };
   writeFileSync(join(dir, "report.json"), JSON.stringify(report, null, 2));
 
   console.log(
-    `  flashes/s: luminance ${flash.maxFlashesPerSec.luminance}, red ${flash.maxFlashesPerSec.red} (max 3) | loop diff ${loop.toFixed(2)} (max ${reel.loopTolerance}) | ${loud.silent ? "silent" : `${loud.outputLUFS} LUFS, TP ${loud.truePeak} dB`}`,
+    `  flashes/s: luminance ${flash.maxFlashesPerSec.luminance}, red ${flash.maxFlashesPerSec.red} (max 3) | loop diff ${loop.toFixed(2)} (max ${reel.loopTolerance}) | SFX ${loud.silent ? "SILENT" : `${loud.outputLUFS} LUFS`}${loudMusic ? ` | music mix ${loudMusic.outputLUFS} LUFS` : ""}`,
   );
   if (!flash.pass)
     throw new Error(
       `PHOTOSENSITIVITY FAIL: ${flash.maxFlashesPerSec.luminance} luminance / ${flash.maxFlashesPerSec.red} red flashes per second ` +
         `(worst window at ${flash.worstAt.luminance.toFixed(2)} s / ${flash.worstAt.red.toFixed(2)} s). See out/${id}/report.json`,
     );
+  if (loud.silent) throw new Error("SOUND FAIL: the SFX mix is silent - every version needs sound effects (owner rule)");
   if (loop > reel.loopTolerance) throw new Error(`LOOP FAIL: last frame differs from frame 0 by ${loop.toFixed(2)} (max ${reel.loopTolerance})`);
 
   if (draft) {
-    const preview = join(dir, "draft.mp4");
-    await step("mux draft", () =>
-      run("ffmpeg", ["-y", "-v", "error", "-i", master, "-i", mixNorm, "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "160k", "-shortest", "-movflags", "+faststart", preview]),
-    );
+    const files: string[] = [];
+    for (const [name, music] of [["draft-youtube.mp4", true], ["draft-sfx.mp4", false]] as const) {
+      if (music && !hasMusic) continue;
+      const preview = join(dir, name);
+      await step(`mux ${name}`, () =>
+        run("ffmpeg", ["-y", "-v", "error", "-i", master, "-i", mixFor(music), "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "160k", "-shortest", "-movflags", "+faststart", preview]),
+      );
+      files.push(preview);
+    }
     rmSync(master);
-    console.log(`draft ready: ${preview} (${((Date.now() - t0) / 1000).toFixed(0)} s total)`);
-    return { id, dir, files: [preview] };
+    console.log(`draft ready: ${files.join(", ")} (${((Date.now() - t0) / 1000).toFixed(0)} s total)`);
+    return { id, dir, files };
   }
 
   const pub = join(PUBLISH, id);
@@ -146,7 +163,7 @@ export async function renderReel(id: string, opts: { serveUrl?: string; draft?: 
     const vKbps = Math.min(spec.videoKbps, capKbps), maxKbps = Math.min(spec.maxrateKbps, Math.round(capKbps * 1.25));
     await step(`export ${spec.label} ${spec.width}x${spec.height}`, () =>
       run("ffmpeg", [
-        "-y", "-v", "error", "-i", master, "-i", mixNorm, "-map", "0:v:0", "-map", "1:a:0",
+        "-y", "-v", "error", "-i", master, "-i", mixFor(spec.music), "-map", "0:v:0", "-map", "1:a:0",
         "-vf", `scale=${spec.width}:${spec.height}:flags=lanczos,fps=${spec.fps}`,
         "-c:v", "libx264", "-profile:v", "high", "-level:v", "4.2", "-preset", "slow", "-pix_fmt", "yuv420p",
         "-b:v", `${vKbps}k`, "-maxrate", `${maxKbps}k`, "-bufsize", `${maxKbps * 2}k`,
@@ -164,6 +181,7 @@ export async function renderReel(id: string, opts: { serveUrl?: string; draft?: 
         `PLATFORM: ${spec.label}`,
         `VIDEO: ${spec.filePrefix}_${id}.mp4 (${mb.toFixed(1)} MB)`,
         `COVER: cover.jpg`,
+        `SOUND: ${spec.music && hasMusic ? "SFX + in-house music" : "SFX only - add your trending music in the app"}`,
         ...(spec.titleMax !== null ? ["", "TITLE:", text.title ?? ""] : []),
         "",
         spec.titleMax !== null ? "DESCRIPTION:" : "CAPTION:",

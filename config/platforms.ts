@@ -7,6 +7,8 @@ export type PlatformId = "youtube" | "instagram" | "facebook" | "tiktok" | "x";
 export interface PlatformSpec {
   label: string;
   filePrefix: string;
+  /** true = this file gets the music mix (YouTube only, owner rule); false = SFX only. */
+  music: boolean;
   width: number;
   height: number;
   fps: number;
@@ -47,6 +49,7 @@ export const PLATFORMS: Record<PlatformId, PlatformSpec> = {
   youtube: {
     label: "YouTube Shorts",
     filePrefix: "SHORT",
+    music: true,
     width: 1080,
     height: 1920,
     fps: 60,
@@ -68,6 +71,7 @@ export const PLATFORMS: Record<PlatformId, PlatformSpec> = {
   instagram: {
     label: "Instagram Reels",
     filePrefix: "IG",
+    music: false,
     width: 1080,
     height: 1920,
     fps: 60,
@@ -89,6 +93,7 @@ export const PLATFORMS: Record<PlatformId, PlatformSpec> = {
   facebook: {
     label: "Facebook Reels",
     filePrefix: "FB",
+    music: false,
     width: 1080,
     height: 1920,
     fps: 60,
@@ -110,6 +115,7 @@ export const PLATFORMS: Record<PlatformId, PlatformSpec> = {
   tiktok: {
     label: "TikTok",
     filePrefix: "TT",
+    music: false,
     width: 1080,
     height: 1920,
     fps: 60,
@@ -131,6 +137,7 @@ export const PLATFORMS: Record<PlatformId, PlatformSpec> = {
   x: {
     label: "X",
     filePrefix: "X",
+    music: false,
     width: 720,
     height: 1280,
     fps: 60,
