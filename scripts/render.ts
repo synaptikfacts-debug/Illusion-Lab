@@ -23,6 +23,7 @@ import { generateRingsAudio } from "./gen-rings-audio";
 import { generatePendulumAudio } from "./gen-pendulum-audio";
 import { generateFerroAudio } from "./gen-ferro-audio";
 import { generateInkAudio } from "./gen-ink-audio";
+import { generateLabyrinthAudio } from "./gen-labyrinth-audio";
 import { generateMusic } from "./gen-music";
 import { loopDiff, normaliseLoudness } from "./lib/checks";
 import { run } from "./lib/ffmpeg";
@@ -101,6 +102,7 @@ export async function renderReel(id: string, opts: { serveUrl?: string; draft?: 
   if (usesGenerated && reel.illusion.type === "pendulum") generatePendulumAudio(reel);
   if (usesGenerated && reel.illusion.type === "ferro") generateFerroAudio(reel);
   if (usesGenerated && reel.illusion.type === "ink") generateInkAudio(reel);
+  if (usesGenerated && reel.audio.musicGen?.style === "labyrinth") generateLabyrinthAudio(reel);
   if (reel.audio.musicGen) generateMusic(reel);
   const missing = assetPaths(reel).filter((p) => !existsSync(p));
   if (missing.length) throw new Error(`Missing assets:\n  ${missing.join("\n  ")}`);

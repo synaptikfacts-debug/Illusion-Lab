@@ -62,6 +62,17 @@ motion) - NOT the same objects, materials, colours or effects. Each new reel nee
 Before building, write one line: "Last two reels used X/Y. This one uses Z" and check nothing repeats.
 History: 0004 chrome rods, dark studio, teal/amber, piano score. 0005 obsidian dominoes, magenta/gold (rejected).
 0006 v1 = rods again (rejected for repeating 0004). 0006 v2 = floating glass cubes, bright dawn, harp/marimba.
+Nov 10-11: 0010 frost on a window and 0010 liquid-gold black hole (browser shaders) were rejected as "boring, AI slop,
+not realistic". 0010 Ferrofluid Labyrinth was APPROVED: ray-traced in Blender (real glass, macro lens, LED backlight),
+amber->magenta->violet light, calm felt-piano taps + strings in C# major (first busy mix was "annoying").
+
+## RULE: ULTRA-REALISTIC = BLENDER (owner, Nov 11 2026)
+The owner wants ultra-realistic HD; the browser-shader look reads as CG. Realistic reels are ray-traced in Blender
+(Cycles, GPU/OptiX on the RTX 4070 Ti), scenes built in Python scripts (scripts/blender/, no .blend files in git), then
+played through the normal Remotion pipeline (`clip` effect) for sound, checks and exports. Before animating, send ONE
+still for approval, then a short motion test. Render fast: parallel map workers, frames rendered as soon as their
+inputs exist, adaptive sampling + OptiX denoiser (owner expects ~30 min, not hours). Stay in the LIQUID line
+(0006/0008/0009/0010) unless the owner says otherwise. Sound must be calm: few soft sounds, no drums/rumble/plucks.
 
 ## RULE: ABSTRACT, MESMERIZING EFFECTS - NO FACES, NO PICTURES (owner, Nov 10 2026)
 The owner does not want reels that form a face, an eye, a butterfly or any picture ("why is there even a face?").

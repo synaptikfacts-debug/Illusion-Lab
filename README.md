@@ -12,6 +12,11 @@ ffmpeg for platform exports. Every render is deterministic (seeded, frame-driven
 - Instrument samples for the YouTube music (git-ignored, ~60 MB) into `samples/`:
   `npm pack @audio-samples/piano-mp3-velocity6@1.0.5 @audio-samples/piano-mp3-velocity10@1.0.5 tiny-orchestra@0.2.0`,
   extract each and move its `package` folder to `samples/piano-v6`, `samples/piano-v10`, `samples/orchestra`.
+- Ray-traced reels (e.g. 0010 Ferrofluid Labyrinth) need Blender 5.3 (`winget install BlenderFoundation.Blender`)
+  and an NVIDIA GPU for Cycles/OptiX. Picture pipeline:
+  `npx tsx scripts/gen-labyrinth-reel.ts out/labyrinth-reel` (per-frame maps; parallel ranges allowed) ->
+  `blender -b --factory-startup -P scripts/blender/labyrinth_anim.py -- <mapsDir> <framesDir> 32 <k> <n>` (run n
+  instances, k = 0..n-1) -> encode the frames to `assets/generated/<id>.mp4` -> `npm run render -- <id>`.
 
 ## Sound rule
 Every version gets motion-synced, calm sound effects. Music goes ONLY on the YouTube file (in-house, calm,
