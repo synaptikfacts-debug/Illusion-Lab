@@ -75,7 +75,7 @@ function step<T>(label: string, fn: () => Promise<T>): Promise<T> {
   });
 }
 
-export async function renderReel(id: string, opts: { serveUrl?: string; draft?: boolean } = {}) {
+export async function renderReel(id: string, opts: { serveUrl?: string; draft?: boolean; reuseVideo?: boolean } = {}) {
   const t0 = Date.now();
   const reel = await loadReel(id);
   const draft = !!opts.draft;
@@ -115,7 +115,8 @@ export async function renderReel(id: string, opts: { serveUrl?: string; draft?: 
   const musicMix = join(dir, "mix-music.wav"), musicNorm = join(dir, "mix-music-norm.wav");
 
   let lastPct = -1;
-  await step(`render video ${composition.durationInFrames} frames @ ${draft ? "540x960" : "1080x1920"}`, () =>
+  // --reuse-video: keep the existing master picture (sound-only changes), redo mixes, checks and exports
+  if (!(opts.reuseVideo && existsSync(master))) await step(`render video ${composition.durationInFrames} frames @ ${draft ? "540x960" : "1080x1920"}`, () =>
     renderMedia({
       composition,
       serveUrl,
@@ -137,11 +138,11 @@ export async function renderReel(id: string, opts: { serveUrl?: string; draft?: 
   // two mixes: SFX only (Instagram/TikTok/Facebook/X) and SFX + music (YouTube)
   const audioComp = (withMusic: boolean) => selectComposition({ serveUrl, id, inputProps: { withMusic }, ...BROWSER });
   await step("render SFX mix", async () =>
-    renderMedia({ composition: await audioComp(false), serveUrl, codec: "wav", outputLocation: sfxMix, inputProps: { withMusic: false }, ...BROWSER }),
+    renderMedia({ composition: await audioComp(false), serveUrl, codec: "wav", outputLocation: sfxMix, inputProps: { withMusic: false }, timeoutInMilliseconds: 180000, ...BROWSER }),
   );
   if (hasMusic)
     await step("render music mix (YouTube)", async () =>
-      renderMedia({ composition: await audioComp(true), serveUrl, codec: "wav", outputLocation: musicMix, inputProps: { withMusic: true }, ...BROWSER }),
+      renderMedia({ composition: await audioComp(true), serveUrl, codec: "wav", outputLocation: musicMix, inputProps: { withMusic: true }, timeoutInMilliseconds: 180000, ...BROWSER }),
     );
 
   const flash = await step("photosensitivity check", () => flashCheck(master));
@@ -242,7 +243,7 @@ if (/render\.ts$/.test(process.argv[1] ?? "")) {
     console.error("usage: npm run render -- <reel-id> [--draft]");
     process.exit(1);
   }
-  renderReel(id, { draft: args.includes("--draft") }).catch((e) => {
+  renderReel(id, { draft: args.includes("--draft"), reuseVideo: args.includes("--reuse-video") }).catch((e) => {
     console.error(`\nRENDER FAILED: ${e.message}`);
     process.exit(1);
   });

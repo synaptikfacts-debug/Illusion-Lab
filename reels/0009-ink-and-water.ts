@@ -20,7 +20,7 @@ export default defineReel({
   illusion: { type: "ink", props: f },
   transform: { type: "inkContinue", props: f },
   audio: {
-    lufs: -16,
+    lufs: -20,
     sfx: [{ at: 0, file: "generated/0009-ink-and-water-sfx.wav", volume: 1 }],
   },
   cover: { at: 5.0 },
