@@ -22,7 +22,8 @@ export function generateOrbMusic(reel: Reel): string {
     const [bass, ch] = prog[b % 4];
     const lift = Math.min(1, t0 / SYNC_AT);
     P(bass, t0, 0.28, 0.42, bar, 1.0);
-    for (let k = 0; k < 6; k++) P(ch[[0, 1, 2, 3, 2, 1][k]] + (k >= 3 ? 12 : 0) + (lift > 0.6 && k === 3 ? 12 : 0), t0 + k * (bar / 6), 0.11 + 0.05 * lift, 0.35 + 0.3 * (k / 5), bar / 3, 0.8);
+    play(out, orch("violas", ch[1]), t0, 0.04, 0.6, bar, 1.0, 0.6); // soft string pad
+    for (let k = 0; k < 6; k++) if (k % 2 === 0 || b % 2 === 1) P(ch[[0, 1, 2, 3, 2, 1][k]] + (k >= 3 ? 12 : 0) + (lift > 0.6 && k === 3 ? 12 : 0), t0 + k * (bar / 6), 0.11 + 0.05 * lift, 0.35 + 0.3 * (k / 5), bar / 3, 0.8);
     play(out, orch("celli", bass + 12), t0, 0.06 + 0.04 * lift, 0.4, bar, 0.6, 0.5);
   }
   play(out, orch("violas", 66), SYNC_AT - 6, 0.06, 0.6, 6, 0.3, 0.5);

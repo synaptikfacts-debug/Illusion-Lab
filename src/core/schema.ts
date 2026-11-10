@@ -61,13 +61,15 @@ export const ReelSchema = z
           .object({ style: z.enum(["loop", "rodStory", "dominoStory", "faceStory", "glassFace", "liquid", "sand", "galton", "orbs"]).default("loop"), bpm: z.number().default(120), dropAt: TimeRef.optional(), key: z.number().int().default(57), seed: z.number().int().default(1) })
           .optional(),
         musicVolume: z.number().min(0).max(1).default(0.6),
+        /** Target loudness; calm reels can sit lower than the -14 LUFS default. */
+        lufs: z.number().min(-24).max(-10).default(-14),
         vo: z.string().nullable().default(null),
         voVolume: z.number().min(0).max(1).default(1),
         sfx: z
           .array(z.object({ at: TimeRef, file: z.string(), volume: z.number().min(0).max(1).default(1) }))
           .default([]),
       })
-      .default({ music: null, musicVolume: 0.6, vo: null, voVolume: 1, sfx: [] }),
+      .default({ music: null, musicVolume: 0.6, lufs: -14, vo: null, voVolume: 1, sfx: [] }),
     /** Burned-in captions (required for every voiceover line). */
     captions: z.array(z.object({ at: TimeRef, dur: z.number().positive(), text: z.string() })).default([]),
     cover: z.object({ at: TimeRef.default(0.8), title: z.string().optional(), sub: z.string().optional() }),

@@ -24,8 +24,8 @@ export interface LoudnessResult {
 }
 
 /** Two-pass EBU R128 normalisation to the house target. Writes a 48 kHz stereo WAV. */
-export async function normaliseLoudness(input: string, output: string): Promise<LoudnessResult> {
-  const target = `I=${LOUDNESS.integratedLUFS}:TP=${LOUDNESS.truePeakDb}:LRA=${LOUDNESS.lra}`;
+export async function normaliseLoudness(input: string, output: string, lufs: number = LOUDNESS.integratedLUFS): Promise<LoudnessResult> {
+  const target = `I=${lufs}:TP=${LOUDNESS.truePeakDb}:LRA=${LOUDNESS.lra}`;
   const p1 = await run("ffmpeg", ["-hide_banner", "-i", input, "-af", `loudnorm=${target}:print_format=json`, "-f", "null", "-"]);
   const m = lastJson(p1.stderr);
   const inputI = Number(m.input_i);

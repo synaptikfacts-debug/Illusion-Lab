@@ -138,8 +138,8 @@ export async function renderReel(id: string, opts: { serveUrl?: string; draft?: 
 
   const flash = await step("photosensitivity check", () => flashCheck(master));
   const loop = await step("loop check", () => loopDiff(master, composition.durationInFrames));
-  const loud = await step("loudness -14 LUFS (SFX mix)", () => normaliseLoudness(sfxMix, sfxNorm));
-  const loudMusic = hasMusic ? await step("loudness -14 LUFS (music mix)", () => normaliseLoudness(musicMix, musicNorm)) : null;
+  const loud = await step("loudness -14 LUFS (SFX mix)", () => normaliseLoudness(sfxMix, sfxNorm, reel.audio.lufs));
+  const loudMusic = hasMusic ? await step("loudness -14 LUFS (music mix)", () => normaliseLoudness(musicMix, musicNorm, reel.audio.lufs)) : null;
   const mixFor = (music: boolean) => (music && hasMusic ? musicNorm : sfxNorm);
   const report = { id, draft, seconds: composition.durationInFrames / reel.fps, flash, loop: { diff: loop, tolerance: reel.loopTolerance }, loudness: { sfx: loud, music: loudMusic } };
   writeFileSync(join(dir, "report.json"), JSON.stringify(report, null, 2));
