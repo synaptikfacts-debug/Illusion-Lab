@@ -1,4 +1,5 @@
-import { defineReel } from "../src/core/define";
+// ARCHIVED (Nov 10 2026): owner prefers the chrome-rod look of 0004 ("I dont like the domino kind of effects"). Superseded by 0006-the-face.
+import { defineReel } from "../../src/core/define";
 
 // Model (formula only): many simple objects with their own motion, emergent picture, motion-made sound.
 // Ours (different from 0004 rods): 3432 obsidian dominoes whose hidden faces form a glowing butterfly.

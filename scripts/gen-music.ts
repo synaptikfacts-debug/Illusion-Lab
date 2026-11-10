@@ -12,6 +12,7 @@ import { ASSETS } from "./lib/paths";
 import { orch, piano, play } from "./lib/sampler";
 import { generateStoryMusic } from "./gen-music-story";
 import { generateDominoMusic } from "./gen-music-domino";
+import { generateFaceMusic } from "./gen-music-face";
 
 // key of F: Fmaj7, Am7, Dm9, Bbmaj9 ... ending on Csus4, which resolves into Fmaj7 at the loop point
 const CHORDS: { root: number; tones: number[] }[] = [
@@ -27,6 +28,7 @@ export function generateMusic(reel: Reel): string {
   const cfg = reel.audio.musicGen!;
   if (cfg.style === "rodStory") return generateStoryMusic(reel);
   if (cfg.style === "dominoStory") return generateDominoMusic(reel);
+  if (cfg.style === "faceStory") return generateFaceMusic(reel);
   const tl = timeline(reel);
   const total = tl.total / tl.fps;
   const bpm = cfg.bpm > 90 ? 72 : cfg.bpm; // calm by default

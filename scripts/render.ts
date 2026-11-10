@@ -14,6 +14,7 @@ import { generateBounceAudio } from "./gen-bounce-audio";
 import { generatePinAudio } from "./gen-pin-audio";
 import { generateRodAudio } from "./gen-rod-audio";
 import { generateDominoAudio } from "./gen-domino-audio";
+import { generateFaceAudio } from "./gen-face-audio";
 import { generateMusic } from "./gen-music";
 import { loopDiff, normaliseLoudness } from "./lib/checks";
 import { run } from "./lib/ffmpeg";
@@ -82,6 +83,7 @@ export async function renderReel(id: string, opts: { serveUrl?: string; draft?: 
   if (usesGenerated && reel.illusion.type === "pinWall") generatePinAudio(reel);
   if (usesGenerated && reel.illusion.type === "rodStory") generateRodAudio(reel);
   if (usesGenerated && reel.illusion.type === "dominoStory") generateDominoAudio(reel);
+  if (usesGenerated && reel.illusion.type === "faceStory") generateFaceAudio(reel);
   if (reel.audio.musicGen) generateMusic(reel);
   const missing = assetPaths(reel).filter((p) => !existsSync(p));
   if (missing.length) throw new Error(`Missing assets:\n  ${missing.join("\n  ")}`);

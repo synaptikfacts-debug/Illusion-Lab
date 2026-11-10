@@ -51,3 +51,6 @@ and is archived in reels/archive/.
   Implemented as a real-time -> story-time map (dominoes/sim.ts tauAt + scripts/lib/domino-time.ts for audio).
 - VISUAL FX baseline: GPU particles from the simulation (sparks on impacts, dust, a dissolve ending), camera that
   arcs to 3/4 angles so motion reads in 3D. Length ~30-35 s is fine when every second moves.
+- LOOK PREFERENCE (owner, Nov 10): the chrome-rod world of 0004 is the house look ("the previous reel was much
+  better"); the domino reel 0005 was rejected ("I dont like the domino kind of effects"). New reels stay in the
+  rod world (RodScene + a new <story>Sim.ts with its own picture and expressions) unless the owner asks otherwise.

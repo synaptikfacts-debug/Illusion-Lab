@@ -10,6 +10,7 @@ import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
+import { makeParticlePoints, type ParticleData } from "../../gl/particleShader";
 import { eye, STORY, type RodSim } from "./sim";
 
 export interface RodLook {
@@ -23,7 +24,7 @@ export interface RodLook {
 }
 
 /** Camera keys: [t, px, py, pz, lx, ly, lz]. Start pose == end pose so the reel can loop after its ending. */
-const CAM: number[][] = [
+export const EYE_CAM: number[][] = [
   [0.0, 0.0, 9.4, 1.2, 0, 0.0, -0.15],
   [0.6, 0.0, 8.4, 1.1, 0, 0.0, -0.15],
   [1.7, 0.0, 10.5, 5.2, 0, 0.0, 0],
@@ -40,7 +41,7 @@ const CAM: number[][] = [
   [28.6, 0.0, 17.4, 4.2, 0, 0.0, -0.1],
 ];
 
-function camAt(t: number) {
+function camAt(t: number, CAM: number[][]) {
   // Catmull-Rom through the keys, eased per segment
   let j = 0;
   while (j < CAM.length - 2 && t > CAM[j + 1][0]) j++;
@@ -68,7 +69,17 @@ const VIGNETTE = {
 
 const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), P = new THREE.Vector3(), S = new THREE.Vector3(), C = new THREE.Color();
 
-const Contents: React.FC<{ sim: RodSim; frame: number; t: number; look: RodLook; dpr: number; zoom: number; glowBoost: number }> = ({
+/** Story-specific parts of the scene (camera path, fade, thumbnail helper, particles). Defaults = "The Eye". */
+export interface RodStoryView {
+  cam: number[][];
+  fade: [number, number];
+  /** Thumbnails: how much a rod belongs to a "white" area that should glow faintly (0..1). */
+  thumbInside?: (u: number, v: number, t: number) => number;
+  parts?: ParticleData;
+}
+const EYE_VIEW: RodStoryView = { cam: [], fade: STORY.fade, thumbInside: (u, v, t) => eye(u, v, t).inside };
+
+const Contents: React.FC<{ sim: RodSim; frame: number; t: number; look: RodLook; dpr: number; zoom: number; glowBoost: number; view: RodStoryView }> = ({
   sim,
   frame,
   t,
@@ -76,6 +87,7 @@ const Contents: React.FC<{ sim: RodSim; frame: number; t: number; look: RodLook;
   dpr,
   zoom,
   glowBoost,
+  view,
 }) => {
   const { gl, scene, camera, size } = useThree();
   const L = sim.layout;
@@ -147,7 +159,7 @@ const Contents: React.FC<{ sim: RodSim; frame: number; t: number; look: RodLook;
     C.copy(ga).lerp(gb, sim.hue[o]).multiplyScalar(g * g * 2.3 * glowBoost);
     if (glowBoost > 1) {
       // thumbnails only: a faint glow on the white of the eye so the almond shape reads at a glance
-      const s = eye(L.u[i], L.v[i], t).inside * 0.2;
+      const s = (view.thumbInside ? view.thumbInside(L.u[i], L.v[i], t) : 0) * 0.2;
       C.r += s * 0.85; C.g += s * 0.95; C.b += s;
     }
     meshes.glows.setColorAt(i, C);
@@ -157,7 +169,7 @@ const Contents: React.FC<{ sim: RodSim; frame: number; t: number; look: RodLook;
   meshes.glows.instanceMatrix.needsUpdate = true;
   meshes.glows.instanceColor!.needsUpdate = true;
 
-  const [cx, cy, cz, lx, ly, lz] = camAt(t);
+  const [cx, cy, cz, lx, ly, lz] = camAt(t, view.cam.length ? view.cam : EYE_CAM);
   const px = lx + (cx - lx) * zoom, py = ly + (cy - ly) * zoom, pz = lz + (cz - lz) * zoom;
   camera.position.set(px, py, pz);
   camera.lookAt(lx, ly, lz);
@@ -169,7 +181,12 @@ const Contents: React.FC<{ sim: RodSim; frame: number; t: number; look: RodLook;
   u.aperture.value = 0.0016 / Math.max(1, focus * 0.6);
   u.maxblur.value = 0.009;
 
-  const fx = Math.min(1, Math.max(0, (t - STORY.fade[0]) / (STORY.fade[1] - STORY.fade[0])));
+  const fx = Math.min(1, Math.max(0, (t - view.fade[0]) / (view.fade[1] - view.fade[0])));
+  const points = useMemo(
+    () => (view.parts ? makeParticlePoints(view.parts, (size.height * dpr) / (2 * Math.tan((16 * Math.PI) / 180))) : null),
+    [view.parts, size.height, dpr],
+  );
+  if (points) (points.material as THREE.ShaderMaterial).uniforms.uT.value = t;
   composer.vig.uniforms.uFade.value = 1 - fx * fx * (3 - 2 * fx);
 
   useFrame(() => composer.c.render(), 1);
@@ -199,6 +216,7 @@ const Contents: React.FC<{ sim: RodSim; frame: number; t: number; look: RodLook;
       <primitive object={meshes.shafts} />
       <primitive object={meshes.caps} />
       <primitive object={meshes.glows} />
+      {points && <primitive object={points} />}
       {/* anodised plate with a chrome frame */}
       <mesh position={[0, -0.13, 0]} receiveShadow>
         <boxGeometry args={[hx * 2, 0.26, hz * 2]} />
@@ -216,16 +234,17 @@ const Contents: React.FC<{ sim: RodSim; frame: number; t: number; look: RodLook;
       })}
       <mesh rotation-x={-Math.PI / 2} position-y={-0.27} receiveShadow>
         <planeGeometry args={[60, 60]} />
-        <meshStandardMaterial color={look.background} roughness={0.55} metalness={0.2} />
+        <meshBasicMaterial color="#000000" />
       </mesh>
     </>
   );
 };
 
-export const RodScene: React.FC<{ sim: RodSim; frame: number; t: number; look: RodLook; dpr?: number; zoom?: number; glowBoost?: number }> = ({
+export const RodScene: React.FC<{ sim: RodSim; frame: number; t: number; look: RodLook; dpr?: number; zoom?: number; glowBoost?: number; view?: RodStoryView }> = ({
   dpr = 2,
   zoom = 1,
   glowBoost = 1,
+  view = EYE_VIEW,
   ...props
 }) => {
   const { width, height } = useVideoConfig();
@@ -238,7 +257,7 @@ export const RodScene: React.FC<{ sim: RodSim; frame: number; t: number; look: R
       gl={{ antialias: true, preserveDrawingBuffer: true, powerPreference: "high-performance" }}
       camera={{ fov: 32, near: 0.05, far: 60, position: [0, 4, 8] }}
     >
-      <Contents {...props} dpr={dpr} zoom={zoom} glowBoost={glowBoost} />
+      <Contents {...props} dpr={dpr} zoom={zoom} glowBoost={glowBoost} view={view} />
     </ThreeCanvas>
   );
 };
