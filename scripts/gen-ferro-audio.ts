@@ -27,7 +27,7 @@ export function generateFerroAudio(reel: Reel): string {
   // a soft pop for every magnet pulse
   const pop = (at: number, f: number, g: number, pan: number) =>
     addWrapped(out, at, 0.25, pan, (t) => Math.sin(2 * Math.PI * f * (1 + 1.5 * t) * t) * Math.exp(-t * 18) * Math.min(1, t / 0.006) * g);
-  for (const p of S.pulses) if (p >= 0) pop(p + 0.15, 180 + r() * 30, 0.35, 0.5);
+  for (const p of S.pulses) if (p >= 0) pop(p + 0.15, 170 + r() * 50, 0.3, 0.35 + 0.3 * r());
   pop(0.05, 190, 0.3, 0.5); // the hook
   // the bloom: a slow airy shimmer rising in
   const bp = new Biquad();

@@ -14,8 +14,10 @@ import { controls, FERRO_GLSL, FSTORY } from "./ferro";
 /** Camera [t, px, py, pz, lx, ly, lz]: low and close on the spike ring (hook), rise over the growing field,
  *  top-down for the turning bloom, down to grazing for the crown, low for the melt and the calm mirror. */
 const CAM: number[][] = [
-  [0.0, 0.0, 0.75, 2.2, 0, 0.12, 0],
-  [3.5, 0.9, 1.4, 3.0, 0, 0.1, 0],
+  [0.0, 0.5, 0.62, 1.7, 0, 0.18, 0],
+  [2.5, -0.9, 1.05, 2.2, 0, 0.12, 0],
+  [4.2, 0.7, 1.55, 2.7, 0, 0.08, 0],
+  [6.0, 0.9, 1.8, 3.0, 0, 0.05, 0],
   [8.0, -1.6, 1.6, 3.4, 0, 0, 0],
   [12.0, 1.4, 2.4, 3.0, 0, 0, 0],
   [16.0, -1.4, 2.8, 2.8, 0, 0, 0],
@@ -62,12 +64,15 @@ vec3 env(vec3 R) {
   float band = smoothstep(0.03, 0.1, el) * smoothstep(0.5, 0.36, el);
   c += vec3(0.2, 2.4, 2.2) * band * smoothstep(0.45, 0.22, abs(az - 0.7));   // teal softbox
   c += vec3(1.7, 0.5, 3.4) * band * smoothstep(0.5, 0.28, abs(az + 1.2));    // electric violet softbox
+  c += vec3(1.1, 0.7, 2.2) * band * smoothstep(0.9, 0.5, abs(abs(az) - 3.14159)); // soft panel behind the camera
   // soft coloured dome overhead: teal on one side, violet on the other, so spikes catch colour from any angle
   c += mix(vec3(0.05, 0.3, 0.32), vec3(0.28, 0.1, 0.42), 0.5 + 0.5 * sin(az * 2.0)) * smoothstep(0.3, 0.55, el) * smoothstep(1.0, 0.75, el);
   c += vec3(2.6, 2.5, 2.4) * smoothstep(0.010, 0.0, abs(el - 0.62)) * 0.9;   // ring lights
   c += vec3(2.0, 2.2, 2.6) * smoothstep(0.008, 0.0, abs(el - 0.78)) * 0.8;
   c += vec3(1.2, 2.4, 2.4) * smoothstep(0.006, 0.0, abs(el - 0.9)) * 0.6;
   c += vec3(0.5, 0.9, 1.4) * smoothstep(0.06, 0.0, abs(el - 0.04)) * 0.08;    // faint horizon glow
+  // below the horizon: the glowing pool itself (violet/teal bounce), so downward-facing spike sides are never dead black
+  c += mix(vec3(0.16, 0.42, 0.44), vec3(0.42, 0.18, 0.62), 0.5 + 0.5 * sin(az * 1.5)) * smoothstep(0.02, -0.35, el) * 0.38;
   return c;
 }
 void main() {
@@ -112,7 +117,9 @@ const Contents: React.FC<{ t: number; dpr: number; zoom: number }> = ({ t, dpr, 
       fragmentShader: FRAG,
       uniforms: {
         uT: { value: 0 }, uGrow: { value: 0 }, uBloom: { value: 0 }, uCrown: { value: 0 }, uOn: { value: 1 }, uRot: { value: 0 }, uMelt: { value: -1 },
-        uPulse: { value: FSTORY.pulses },
+        uPulse: { value: FSTORY.pulses.map(() => new THREE.Vector3()) },
+        uMag: { value: new THREE.Vector2() },
+        uMagOn: { value: 1 },
         uCam: { value: new THREE.Vector3() },
       },
     });
@@ -145,13 +152,22 @@ const Contents: React.FC<{ t: number; dpr: number; zoom: number }> = ({ t, dpr, 
     return { c, bokeh, post };
   }, [gl, scene, camera, size.width, size.height, dpr]);
 
-  const [cx, cy, cz, lx, ly, lz] = camAt(t);
+  let [cx, cy, cz, lx, ly, lz] = camAt(t);
+  {
+    const [mx, mz] = controls(t).mag;
+    const w = 1 - Math.min(1, Math.max(0, (t - 6.8) / 2.2)); // chase during the glide, hand over to the keyframes
+    cx += mx * w; lx += mx * w; cz += mz * w; lz += mz * w;
+  }
   camera.position.set(lx + (cx - lx) * zoom, ly + (cy - ly) * zoom, lz + (cz - lz) * zoom);
   camera.lookAt(lx, ly, lz);
   camera.updateMatrixWorld();
   const u = mats.mat.uniforms, k = controls(t);
+  void FSTORY;
   u.uT.value = t; u.uGrow.value = k.grow; u.uBloom.value = k.bloom; u.uCrown.value = k.crown; u.uOn.value = k.on; u.uRot.value = k.rot; u.uMelt.value = k.melt;
   u.uCam.value.copy(camera.position);
+  u.uMag.value.set(k.mag[0], k.mag[1]);
+  u.uMagOn.value = k.magOn;
+  (u.uPulse.value as THREE.Vector3[]).forEach((v, i) => v.set(k.pulses[i * 3], k.pulses[i * 3 + 1], k.pulses[i * 3 + 2]));
   const b = composer.bokeh.uniforms as Record<string, THREE.IUniform>;
   b.focus.value = camera.position.distanceTo(new THREE.Vector3(lx, ly, lz));
   b.aperture.value = 0.003 / Math.max(1, b.focus.value * 0.55);

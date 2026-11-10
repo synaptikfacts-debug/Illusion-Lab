@@ -8,7 +8,11 @@
 
 export const FSTORY = {
   duration: 30,
-  pulses: [-0.6, 2.2, 4.4, 6.4],
+  /** pulse rings, each emitted from where the magnet is at that moment */
+  pulses: [-0.5, 0.6, 1.6, 2.6, 3.5, 4.4, 5.4, 6.4],
+  /** the gliding magnet: travels a figure-eight, then settles in the centre */
+  glide: [0, 7.4] as [number, number],
+  settle: 8.6,
   grow: [6.8, 11.5] as [number, number],
   bloom: [12.0, 15.5] as [number, number],
   crown: [17.0, 19.0] as [number, number],
@@ -21,6 +25,15 @@ const sm = (a: number, b: number, x: number) => {
   return t * t * (3 - 2 * t);
 };
 
+/** Magnet position on the pool (x, z). */
+export function magAt(t: number): [number, number] {
+  const S = FSTORY;
+  const tt = Math.min(t, S.glide[1]);
+  const x = 1.15 * Math.sin(0.85 * tt + 0.4), z = 0.75 * Math.sin(1.7 * tt + 1.2);
+  const k = sm(S.glide[1], S.settle, t); // glide home to the centre
+  return [x * (1 - k), z * (1 - k)];
+}
+
 /** Uniform values at time t. */
 export function controls(t: number) {
   const S = FSTORY;
@@ -32,6 +45,9 @@ export function controls(t: number) {
     on,
     rot: 0.05 * t + 0.25 * sm(S.bloom[0], 26, t) * (t - S.bloom[0]) * 0.12, // lattice turns slowly, more in the bloom
     melt: t - S.off, // seconds since the magnet switched off (negative before)
+    mag: magAt(t),
+    magOn: 1 - sm(S.settle - 0.6, S.settle + 0.8, t), // the travelling cluster hands over to the growing field
+    pulses: S.pulses.flatMap((p) => { const [x, z] = magAt(Math.max(0, p)); return [x, z, p]; }),
   };
 }
 
@@ -39,13 +55,16 @@ export function controls(t: number) {
 export function energy(t: number) {
   const k = controls(t);
   let e = 0.25 + 0.45 * k.grow + 0.3 * k.bloom;
-  for (const p of FSTORY.pulses) { const d = t - p; if (d > 0 && d < 2.5) e += 0.35 * Math.exp(-d * 1.4); }
+  e += 0.35 * k.magOn;
+  for (const p of FSTORY.pulses) { const d = t - p; if (d > 0 && d < 2.5) e += 0.3 * Math.exp(-d * 1.4); }
   return Math.min(1, e) * k.on;
 }
 
 export const FERRO_GLSL = /* glsl */ `
 uniform float uT, uGrow, uBloom, uCrown, uOn, uRot, uMelt;
-uniform float uPulse[4];
+uniform vec3 uPulse[8];
+uniform vec2 uMag;
+uniform float uMagOn;
 const float A = 0.17; // spike spacing
 
 // nearest centre of a hexagonal lattice
@@ -61,15 +80,19 @@ vec2 hexCentre(vec2 p) {
 float envelope(vec2 c) {
   float r = length(c), th = atan(c.y, c.x);
   float e = 0.0;
-  // pulse rings travelling outward
-  for (int i = 0; i < 4; i++) {
-    float d = uT - uPulse[i];
+  // pulse rings travelling outward from where the magnet was when they fired (they cross and collide)
+  for (int i = 0; i < 8; i++) {
+    float d = uT - uPulse[i].z;
     if (d < 0.0 || d > 4.0) continue;
-    float front = 0.35 + 0.75 * d;
-    e += exp(-pow((r - front) / 0.22, 2.0)) * exp(-d * 0.45) * 0.95;
+    float rr = length(c - uPulse[i].xy);
+    float front = 0.3 + 0.8 * d;
+    e += exp(-pow((rr - front) / 0.2, 2.0)) * exp(-d * 0.5) * 0.85;
   }
-  // a small steady mound of spikes at the centre from the start
-  e += 0.55 * exp(-r * r / 0.18);
+  // the travelling magnet drags a tall cluster of spikes
+  float dm = length(c - uMag);
+  e += uMagOn * 1.25 * exp(-dm * dm / 0.16);
+  // a small mound of spikes at the centre once the magnet has settled
+  e += (1.0 - uMagOn) * 0.55 * exp(-r * r / 0.18);
   // the field grows over the pool
   float R = mix(0.4, 2.3, uGrow);
   e = max(e, uGrow * 0.85 * (1.0 - smoothstep(R - 0.5, R, r)));
@@ -91,7 +114,7 @@ float height(vec2 p) {
   float s = pow(max(0.0, 1.0 - d / (A * 0.56)), 1.8);
   float h = e * 0.42 * s;
   // the fluid heaps up a little under the spikes
-  h += 0.07 * envelope(p * 0.999) ;
+  h += 0.07 * envelope(p * 0.999);
   // after the magnet switches off: one ripple runs out from the centre
   if (uMelt > 0.0) {
     float r = length(p), front = r - 1.2 * uMelt;
