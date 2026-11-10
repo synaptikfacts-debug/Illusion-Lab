@@ -11,10 +11,11 @@ import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { Reflector } from "three/examples/jsm/objects/Reflector.js";
-import { angleAt, PD, pivotX, pivotY, SYNC_AT } from "./pendulum";
+import { makeParticlePoints } from "../../gl/particleShader";
+import { ampAt, angleAt, PD, pivotX, pivotY, SYNC_AT } from "./pendulum";
 
-const TRAIL = 7; // light-trail samples per sphere
-const TRAIL_DT = 0.03; // seconds between samples
+const TRAIL = 30; // light-painting samples per sphere (overlapping = a continuous ribbon of light)
+const TRAIL_DT = 0.02; // seconds between samples
 const MOTES = 700;
 
 /** Soft volumetric light beam (additive cone, brightest at the top, fading down and at the edges). */
@@ -26,8 +27,9 @@ const BEAM_VERT = `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projec
 /** Camera [t, x, y, z, lookX, lookY]: a 3/4 view down the rows (so each tier reads as a snake/helix), slowly
  *  swinging round toward the front, end-on for the sync line-up, easing back as they hang still. */
 const CAM: number[][] = [
-  [0, -4.6, 6.0, 4.2, 0.4, -0.5],
-  [9, -3.4, 6.6, 4.8, 0.2, -0.5],
+  [0, -3.2, 1.0, 2.6, 0.6, -0.4],
+  [5, -3.8, 3.6, 4.0, 0.4, -0.5],
+  [11, -3.4, 6.6, 4.8, 0.2, -0.5],
   [18, -5.2, 5.8, 3.6, 0.5, -0.5],
   [SYNC_AT, -6.4, 5.2, 3.0, 0.7, -0.5],
   [30, -7.2, 6.2, 3.8, 0.5, -0.5],
@@ -79,7 +81,7 @@ const Contents: React.FC<{ t: number; dpr: number; zoom: number }> = ({ t, dpr, 
 
   const parts = useMemo(() => {
     const bobs = new THREE.InstancedMesh(
-      new THREE.SphereGeometry(PD.bob, 32, 24),
+      new THREE.SphereGeometry(PD.bob * 0.75, 32, 24),
       new THREE.MeshPhysicalMaterial({ roughness: 0.12, metalness: 0.15, clearcoat: 1, clearcoatRoughness: 0.05 }),
       N,
     );
@@ -136,7 +138,54 @@ const Contents: React.FC<{ t: number; dpr: number; zoom: number }> = ({ t, dpr, 
     const mirror = new Reflector(new THREE.PlaneGeometry(30, 30), { textureWidth: 1024, textureHeight: 1024, color: new THREE.Color("#2a2c36") });
     mirror.rotation.x = -Math.PI / 2;
     mirror.position.y = floorY;
-    return { bobs, threads, trails, glows, base, motes, mp, mphase, beams, mirror, floorY };
+    // soft out-of-focus lights drifting far behind the sculpture
+    const bc = document.createElement("canvas");
+    bc.width = bc.height = 128;
+    const bg2 = bc.getContext("2d")!;
+    const rg = bg2.createRadialGradient(64, 64, 0, 64, 64, 64);
+    rg.addColorStop(0, "rgba(255,255,255,0.9)"); rg.addColorStop(0.55, "rgba(255,255,255,0.35)"); rg.addColorStop(0.8, "rgba(255,255,255,0.08)"); rg.addColorStop(1, "rgba(255,255,255,0)");
+    bg2.fillStyle = rg; bg2.fillRect(0, 0, 128, 128);
+    const btex = new THREE.CanvasTexture(bc);
+    const bokehCols = ["#ffc27a", "#7fa6ff", "#5fd1c4", "#ff9e6a", "#b49cff"];
+    const bokeh: { s: THREE.Sprite; x: number; y: number; z: number; ph: number }[] = [];
+    for (let m = 0; m < 46; m++) {
+      const mat = new THREE.SpriteMaterial({ map: btex, color: bokehCols[m % bokehCols.length], transparent: true, opacity: 0.18 + 0.2 * r(m + 7), blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+      const sp = new THREE.Sprite(mat);
+      const sz = 0.6 + 1.6 * r(m + 17);
+      sp.scale.set(sz, sz, 1);
+      bokeh.push({ s: sp, x: (r(m + 27) - 0.5) * 22 + 6, y: (r(m + 37) - 0.5) * 14, z: -6 - 10 * r(m + 47), ph: r(m + 57) * 6.28 });
+    }
+    // climax: sparks rise from every orb as the lines form
+    const P2: number[] = [], V2: number[] = [], T2: number[] = [], C3: number[] = [], S3: number[] = [];
+    for (let j = 0; j < PD.tiers; j++)
+      for (let k = 0; k < PD.cols; k++) {
+        const c0 = base[j * PD.cols + k];
+        for (let q = 0; q < 5; q++) {
+          const a = r(j * 999 + k * 31 + q) * 6.28;
+          P2.push(pivotX(k), pivotY(j) - PD.L * Math.cos(PD.theta), PD.L * Math.sin(PD.theta));
+          V2.push(Math.cos(a) * 0.25, 0.5 + r(k + q * 7 + j) * 0.9, Math.sin(a) * 0.25);
+          T2.push(SYNC_AT - 0.05 + r(q * 13 + k + j * 3) * 0.25, 1.2 + r(k * q + 5) * 1.0, -0.25, 1);
+          C3.push(c0.r * 1.6 + 0.3, c0.g * 1.6 + 0.3, c0.b * 1.6 + 0.3);
+          S3.push(0.04 + 0.04 * r(k + q + j * 11));
+        }
+      }
+    const f32 = (a: number[]) => Float32Array.from(a);
+    const sparks = makeParticlePoints({ count: S3.length, p: f32(P2), v: f32(V2), t: f32(T2), c: f32(C3), s: f32(S3) }, 900, -1000);
+    const RS = 56; // samples per ribbon
+    const rPos = new Float32Array(N * RS * 2 * 3), rCol = new Float32Array(N * RS * 2 * 3);
+    const idx: number[] = [];
+    for (let i = 0; i < N; i++)
+      for (let q = 0; q < RS - 1; q++) {
+        const a = (i * RS + q) * 2;
+        idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+      }
+    const rGeo = new THREE.BufferGeometry();
+    rGeo.setAttribute("position", new THREE.BufferAttribute(rPos, 3));
+    rGeo.setAttribute("color", new THREE.BufferAttribute(rCol, 3));
+    rGeo.setIndex(idx);
+    const ribbons = new THREE.Mesh(rGeo, new THREE.MeshBasicMaterial({ vertexColors: true, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, side: THREE.DoubleSide, toneMapped: false }));
+    ribbons.frustumCulled = false;
+    return { bobs, threads, trails, glows, base, motes, mp, mphase, beams, mirror, floorY, bokeh, sparks, ribbons, rPos, rCol, RS };
   }, []);
 
   const composer = useMemo(() => {
@@ -165,8 +214,9 @@ const Contents: React.FC<{ t: number; dpr: number; zoom: number }> = ({ t, dpr, 
     }
   parts.bobs.instanceMatrix.needsUpdate = true;
   parts.threads.instanceMatrix.needsUpdate = true;
-  // trails + glow
+  // light-painting ribbons + orb glow; everything brightens briefly when the lines form (climax)
   const C2 = new THREE.Color();
+  const ribbonGain = 1 + 0.6 * Math.exp(-(((t - SYNC_AT) / 0.6) ** 2));
   for (let j = 0; j < PD.tiers; j++)
     for (let k = 0; k < PD.cols; k++) {
       const i = j * PD.cols + k, px = pivotX(k), py = pivotY(j), amp = Math.abs(PD.theta) + 1e-6;
@@ -174,16 +224,46 @@ const Contents: React.FC<{ t: number; dpr: number; zoom: number }> = ({ t, dpr, 
       const glow = Math.exp(-((th0 / amp) ** 2) * 6) * (Math.min(1, Math.abs(angleAt(j, k, t) - angleAt(j, k, t - 0.03)) / 0.02));
       M.compose(P.set(px, py - PD.L * Math.cos(th0), PD.L * Math.sin(th0)), Q.identity(), S.set(1, 1, 1));
       parts.glows.setMatrixAt(i, M);
-      parts.glows.setColorAt(i, C2.copy(parts.base[i]).multiplyScalar(0.35 * glow));
+      parts.glows.setColorAt(i, C2.copy(parts.base[i]).multiplyScalar((0.2 + 0.3 * glow) * ribbonGain));
       for (let s2 = 1; s2 <= TRAIL; s2++) {
         const th = angleAt(j, k, t - s2 * TRAIL_DT), f = 1 - s2 / (TRAIL + 1);
-        M.compose(P.set(px, py - PD.L * Math.cos(th), PD.L * Math.sin(th)), Q.identity(), S.setScalar(0.4 + 0.6 * f));
+        M.compose(P.set(px, py - PD.L * Math.cos(th), PD.L * Math.sin(th)), Q.identity(), S.setScalar(0.3 + 0.45 * f));
         const ti = i * TRAIL + s2 - 1;
         parts.trails.setMatrixAt(ti, M);
-        parts.trails.setColorAt(ti, C2.copy(parts.base[i]).multiplyScalar(0.13 * f * f));
+        parts.trails.setColorAt(ti, C2.copy(parts.base[i]).multiplyScalar(0.075 * Math.pow(f, 1.4) * ribbonGain));
       }
     }
   for (const m of [parts.trails, parts.glows]) { m.instanceMatrix.needsUpdate = true; m.instanceColor!.needsUpdate = true; }
+  // ribbons of light: the last 1.2 s of every orb's path, widest and brightest at the orb, tapering away
+  {
+    const RS = parts.RS, span = 1.2, camP = camera.position;
+    const pt = (j: number, k: number, tt: number, o: THREE.Vector3) => {
+      const th = angleAt(j, k, tt);
+      return o.set(pivotX(k), pivotY(j) - PD.L * Math.cos(th), PD.L * Math.sin(th));
+    };
+    const a = new THREE.Vector3(), b = new THREE.Vector3(), tan = new THREE.Vector3(), view = new THREE.Vector3(), side = new THREE.Vector3();
+    for (let j = 0; j < PD.tiers; j++)
+      for (let k = 0; k < PD.cols; k++) {
+        const i = j * PD.cols + k, c0 = parts.base[i];
+        for (let q = 0; q < RS; q++) {
+          const f = q / (RS - 1); // 0 = at the orb, 1 = oldest
+          const tt = t - f * span;
+          pt(j, k, tt, a);
+          pt(j, k, tt - 0.01, b);
+          tan.subVectors(a, b).normalize();
+          view.subVectors(camP, a).normalize();
+          side.crossVectors(tan, view).normalize();
+          const w = PD.bob * 0.55 * (1 - f) ** 0.7;
+          const o = ((i * RS + q) * 2) * 3;
+          parts.rPos[o] = a.x + side.x * w; parts.rPos[o + 1] = a.y + side.y * w; parts.rPos[o + 2] = a.z + side.z * w;
+          parts.rPos[o + 3] = a.x - side.x * w; parts.rPos[o + 4] = a.y - side.y * w; parts.rPos[o + 5] = a.z - side.z * w;
+          const g = 0.55 * (1 - f) ** 1.6 * ribbonGain * (ampAt(tt) / PD.theta + 0.05);
+          for (const off of [0, 3]) { parts.rCol[o + off] = c0.r * g; parts.rCol[o + off + 1] = c0.g * g; parts.rCol[o + off + 2] = c0.b * g; }
+        }
+      }
+    parts.ribbons.geometry.getAttribute("position").needsUpdate = true;
+    parts.ribbons.geometry.getAttribute("color").needsUpdate = true;
+  }
   // motes drift slowly
   const pos = (parts.motes.geometry.getAttribute("position") as THREE.BufferAttribute).array as Float32Array;
   for (let m = 0; m < MOTES; m++) {
@@ -193,6 +273,8 @@ const Contents: React.FC<{ t: number; dpr: number; zoom: number }> = ({ t, dpr, 
     pos[m * 3 + 2] = parts.mp[m * 3 + 2] + 0.2 * Math.cos(t * 0.19 + ph);
   }
   parts.motes.geometry.getAttribute("position").needsUpdate = true;
+  for (const b of parts.bokeh) b.s.position.set(b.x + 0.4 * Math.sin(t * 0.12 + b.ph), b.y + 0.3 * Math.sin(t * 0.09 + b.ph * 1.3), b.z);
+  (parts.sparks.material as THREE.ShaderMaterial).uniforms.uT.value = t;
 
   const [cx, cy, cz, lx, ly] = camAt(t);
   camera.position.set(lx + (cx - lx) * zoom, ly + (cy - ly) * zoom, cz * zoom);
@@ -214,9 +296,11 @@ const Contents: React.FC<{ t: number; dpr: number; zoom: number }> = ({ t, dpr, 
       <pointLight position={[6, 1, -4]} intensity={10} color="#5f8cff" />
       <primitive object={parts.threads} />
       <primitive object={parts.bobs} />
-      <primitive object={parts.trails} />
+      <primitive object={parts.ribbons} />
       <primitive object={parts.glows} />
       <primitive object={parts.motes} />
+      <primitive object={parts.sparks} />
+      {parts.bokeh.map((b, i) => <primitive key={"b" + i} object={b.s} />)}
       <primitive object={parts.mirror} />
       {/* a dark brushed-metal bar for every tier */}
       {Array.from({ length: PD.tiers }, (_, j) => (
