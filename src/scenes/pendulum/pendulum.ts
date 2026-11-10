@@ -6,16 +6,16 @@
 // the swing dies down and they hang still. Closed-form in time, shared with the sound.
 
 export const PD = {
-  tiers: 3,
-  cols: 30,
-  spacing: 0.26, // along x
-  tierGap: 1.7, // vertical distance between tiers
+  tiers: 4,
+  cols: 36,
+  spacing: 0.22, // along x
+  tierGap: 1.45, // vertical distance between tiers
   L: 1.0, // thread length
   bob: 0.09, // sphere radius
-  T: 150, // realign cycle (s)
-  N0: 68, // swings per cycle of the slowest pendulum (0.45 - 0.65 Hz: calm)
+  T: 325, // realign cycle (s)
+  N0: 146, // swings per cycle of the slowest pendulum (0.45 - 0.56 Hz: calm)
   theta: 0.42, // swing amplitude (rad)
-  start: 0.82, // a clean sine wave on every row (about 5 waves), stretching into one wave, then the line // video starts just past the two-row pattern, then 3 rows, 4, one long wave, the line
+  start: 0.917, // a clean sine wave on every row (about 5 waves), stretching into one wave, then the line // video starts just past the two-row pattern, then 3 rows, 4, one long wave, the line
   duration: 30,
   decay: [27.4, 29.4] as [number, number],
   fade: [28.4, 30.0] as [number, number],

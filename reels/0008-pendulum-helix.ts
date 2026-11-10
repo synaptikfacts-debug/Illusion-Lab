@@ -1,7 +1,7 @@
 import { defineReel } from "../src/core/define";
 
 // Owner's pick (concept 1 of 6), dark studio for a calm feel. Every reel different: last = rainbow orbs on a black
-// mirror; this = 90 glossy pendulum spheres on fine threads in 3 tiers, moonlight-blue -> teal -> amber, soft ticks.
+// mirror; this = 144 glossy pendulum spheres on fine threads in 4 tiers, moonlight-blue -> teal -> amber, soft ticks.
 //  0-30    the rows pass through two interleaved lines, three, four, one long wave (alternate tiers mirrored)
 
 //  27      SYNC: every sphere lines up in perfect rows (one clear tick)
@@ -24,10 +24,10 @@ export default defineReel({
   },
   cover: { at: 12.0 },
   publish: {
-    youtube: { title: "90 pendulums, one perfect line", caption: "Every pendulum swings at its own speed. Watch them line up at the end.", hashtags: ["#shorts", "#satisfying", "#oddlysatisfying"] },
-    instagram: { caption: "90 pendulums, each at its own speed. Wait for the perfect line.", hashtags: ["#reels", "#oddlysatisfying", "#satisfying", "#3danimation", "#asmr"] },
-    facebook: { caption: "90 pendulums, each at its own speed.", hashtags: ["#reels", "#satisfying"] },
+    youtube: { title: "144 pendulums, one perfect line", caption: "Every pendulum swings at its own speed. Watch them line up at the end.", hashtags: ["#shorts", "#satisfying", "#oddlysatisfying"] },
+    instagram: { caption: "144 pendulums, each at its own speed. Wait for the perfect line.", hashtags: ["#reels", "#oddlysatisfying", "#satisfying", "#3danimation", "#asmr"] },
+    facebook: { caption: "144 pendulums, each at its own speed.", hashtags: ["#reels", "#satisfying"] },
     tiktok: { caption: "wait for the perfect line", hashtags: ["#fyp", "#oddlysatisfying", "#satisfying", "#3danimation", "#asmr"] },
-    x: { caption: "90 pendulums, each at its own speed.", hashtags: ["#satisfying"] },
+    x: { caption: "144 pendulums, each at its own speed.", hashtags: ["#satisfying"] },
   },
 });
