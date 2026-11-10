@@ -83,8 +83,20 @@ const Contents: React.FC<{ orbs: Orb[]; t: number; dpr: number; zoom: number }> 
     );
     mesh.castShadow = true;
     mesh.frustumCulled = false;
-    const stops = GRADIENT.map((c) => new THREE.Color(c));
-    orbs.forEach((o, i) => mesh.setColorAt(i, gradientAt(stops, o.r01)));
+    // vivid colour wheel: hue turns with the angle and twists with the radius, so every fold of the bounce
+    // pattern sweeps a full spectrum (spirals of colour)
+    void GRADIENT; void gradientAt;
+    const col = new THREE.Color();
+    orbs.forEach((o, i) => {
+      const ang = Math.atan2(o.z, o.x) / (2 * Math.PI) + 0.5;
+      const h = (ang + o.r01 * 0.85) % 1;
+      col.setHSL(h, 0.95, 0.55, THREE.SRGBColorSpace);
+      // equal brightness for every hue (yellow/green would flash harder than blue): scale to a target luminance
+      const lum = 0.2126 * col.r + 0.7152 * col.g + 0.0722 * col.b; // linear
+      col.multiplyScalar(0.16 / Math.max(0.02, lum));
+      const m = Math.max(col.r, col.g, col.b); if (m > 1) col.multiplyScalar(1 / m);
+      mesh.setColorAt(i, col);
+    });
     mesh.instanceColor!.needsUpdate = true;
     const R = OP.discRadius + 0.22;
     const mirror = new Reflector(new THREE.CircleGeometry(R, 160), { textureWidth: 1024, textureHeight: 1024, color: new THREE.Color("#22222c") });
