@@ -64,7 +64,7 @@ vec3 env(vec3 R) {
   float band = smoothstep(0.03, 0.1, el) * smoothstep(0.5, 0.36, el);
   c += vec3(0.2, 2.4, 2.2) * band * smoothstep(0.45, 0.22, abs(az - 0.7));   // teal softbox
   c += vec3(1.7, 0.5, 3.4) * band * smoothstep(0.5, 0.28, abs(az + 1.2));    // electric violet softbox
-  c += vec3(1.1, 0.7, 2.2) * band * smoothstep(0.9, 0.5, abs(abs(az) - 3.14159)); // soft panel behind the camera
+  c += vec3(0.5, 0.32, 1.0) * band * smoothstep(0.9, 0.5, abs(abs(az) - 3.14159)); // soft panel behind the camera
   // soft coloured dome overhead: teal on one side, violet on the other, so spikes catch colour from any angle
   c += mix(vec3(0.05, 0.3, 0.32), vec3(0.28, 0.1, 0.42), 0.5 + 0.5 * sin(az * 2.0)) * smoothstep(0.3, 0.55, el) * smoothstep(1.0, 0.75, el);
   c += vec3(2.6, 2.5, 2.4) * smoothstep(0.010, 0.0, abs(el - 0.62)) * 0.9;   // ring lights

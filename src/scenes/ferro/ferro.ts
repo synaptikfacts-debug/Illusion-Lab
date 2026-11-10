@@ -28,7 +28,9 @@ const sm = (a: number, b: number, x: number) => {
 /** Magnet position on the pool (x, z). */
 export function magAt(t: number): [number, number] {
   const S = FSTORY;
-  const tt = Math.min(t, S.glide[1]);
+  // eases in over the first 1.5 s (no fast sweep on the first frames), then glides at full speed
+  const te = t < 1.5 ? (t * t) / 3 : t - 0.75;
+  const tt = Math.min(te, S.glide[1] - 0.75);
   const x = 1.15 * Math.sin(0.85 * tt + 0.4), z = 0.75 * Math.sin(1.7 * tt + 1.2);
   const k = sm(S.glide[1], S.settle, t); // glide home to the centre
   return [x * (1 - k), z * (1 - k)];
