@@ -4,33 +4,39 @@
 // Pure TS and deterministic: the renderer and the sound generator read the same simulation.
 
 export const STORY = {
-  duration: 23,
-  pop: 0.0,
+  duration: 28.6,
+  /** HOOK: frame 0 = the glowing eye staring at you, pupil tightening... */
+  explode: 0.6, // ...then it SHATTERS: every rod launches in a glowing shockwave
   sources: [
-    { t: 0.15, u: 0, v: 0, a: 1.0 },
-    { t: 1.35, u: 0, v: 0, a: 0.8 },
-    { t: 3.2, u: -0.6, v: 1.25, a: 0.95 },
-    { t: 3.9, u: 0.6, v: -1.25, a: 0.95 },
-    { t: 4.6, u: 0.6, v: 1.25, a: 0.95 },
-    { t: 5.3, u: -0.6, v: -1.25, a: 0.95 },
-    { t: 6.1, u: 0, v: 0, a: 1.1 },
+    { t: 1.75, u: 0, v: 0, a: 0.95 },
+    { t: 2.45, u: -0.6, v: 1.25, a: 0.95 },
+    { t: 3.0, u: 0.6, v: -1.25, a: 0.95 },
+    { t: 3.55, u: 0.6, v: 1.25, a: 0.95 },
+    { t: 4.1, u: -0.6, v: -1.25, a: 0.95 },
+    { t: 4.9, u: 0, v: 0.6, a: 1.0 },
+    { t: 5.6, u: -0.5, v: -0.4, a: 0.9 },
+    { t: 6.3, u: 0.5, v: -0.4, a: 0.9 },
+    { t: 7.2, u: 0, v: 0, a: 1.15 },
   ],
-  spiral: [7.0, 11.0] as [number, number],
-  snap: 11.0,
+  spiral: [8.6, 12.6] as [number, number],
+  snap: 12.6,
   look: [
-    { t: 11.6, gx: 0, gy: 0 },
-    { t: 12.6, gx: -0.24, gy: 0.02 },
-    { t: 13.6, gx: -0.24, gy: 0.02 },
-    { t: 14.1, gx: 0.24, gy: -0.02 },
-    { t: 15.0, gx: 0.24, gy: -0.02 },
-    { t: 15.5, gx: 0, gy: 0.04 },
+    { t: 13.2, gx: 0, gy: 0 },
+    { t: 14.2, gx: -0.24, gy: 0.02 },
+    { t: 15.2, gx: -0.24, gy: 0.02 },
+    { t: 15.7, gx: 0.24, gy: -0.02 },
+    { t: 16.6, gx: 0.24, gy: -0.02 },
+    { t: 17.1, gx: 0, gy: 0.04 },
   ],
-  blink: [15.85, 16.35] as [number, number],
-  dilate: [16.6, 17.4] as [number, number],
-  close: [17.9, 19.3] as [number, number],
-  melt: [19.6, 21.2] as [number, number],
-  lastPop: 21.25,
-  lastLand: 21.7,
+  blink: [17.45, 17.95] as [number, number],
+  dilate: [18.2, 19.0] as [number, number],
+  close: [19.5, 20.9] as [number, number],
+  melt: [21.5, 24.0] as [number, number],
+  lastPop: 24.1,
+  lastLand: 24.55,
+  /** ember on the last rod, then fade to black */
+  ember: [24.55, 27.8] as [number, number],
+  fade: [25.4, 27.9] as [number, number],
   base: 0.06,
 };
 
@@ -105,7 +111,8 @@ function lid(t: number) {
 export function eye(u: number, v: number, t: number) {
   const { gx, gy } = gaze(t);
   const L = lid(t);
-  const pupil = lerp(0.15, 0.24, sm(STORY.dilate[0], STORY.dilate[1], t));
+  // in the hook the pupil tightens as it locks onto you
+  const pupil = t < STORY.explode ? lerp(0.21, 0.12, sm(0, STORY.explode * 0.85, t)) : lerp(0.15, 0.24, sm(STORY.dilate[0], STORY.dilate[1], t));
   const W = 0.92;
   const hA = Math.abs(u) < W ? 0.56 * (1 - (u * u) / (W * W)) : 0;
   const open = hA * L;
@@ -143,6 +150,22 @@ function target(u: number, v: number, t: number, base: number): { h: number; g: 
   let h = base, g = 0, hue = 0;
   const r = Math.hypot(u, v);
 
+
+  // HOOK: the eye is already there on frame 0, then a shockwave shatters it from the pupil outward
+  if (t < S.explode) return eye(u, v, t);
+  const dE = t - S.explode;
+  if (dE < 2.2) {
+    const front = 2.7 * dE;
+    const passed = sm(-0.06, 0.06, front - r);
+    const e0 = eye(u, v, S.explode);
+    const bump = Math.exp(-(((r - front) / 0.17) ** 2)) * Math.exp(-dE * 0.7);
+    const rnd = (Math.sin(u * 127.1 + v * 311.7) * 43758.5453) % 1;
+    const launch = (0.35 + 0.65 * Math.abs(rnd)) * Math.exp(-(((dE - r / 2.7 - 0.07) / 0.11) ** 2)) * Math.exp(-dE * 0.5);
+    h = lerp(e0.h, base, passed) + 1.05 * bump + 0.75 * launch;
+    g = lerp(e0.g, 0, passed) + 0.95 * bump;
+    hue = lerp(e0.hue, 0, passed);
+  }
+
   if (t < S.snap + 0.8) {
     // ripples (fade out as the spiral takes over)
     const wfade = 1 - sm(S.spiral[0] - 0.5, S.spiral[0] + 0.8, t);
@@ -176,14 +199,17 @@ function target(u: number, v: number, t: number, base: number): { h: number; g: 
     g = e.g;
     hue = e.hue;
     // melt: outside in, centre last
-    const m = sm(S.melt[0] + (2.1 - r) * 0.62, S.melt[0] + (2.1 - r) * 0.62 + 0.5, t);
+    const m = sm(S.melt[0] + (2.1 - r) * 0.95, S.melt[0] + (2.1 - r) * 0.95 + 0.9, t);
     h = lerp(h, base, m);
     g = lerp(g, 0, m);
   }
 
-  // the last rod: small pop then down
+  // the last rod: rises gently, settles, keeps a fading amber ember
   if (t > S.lastPop - 0.05 && r < 0.05) {
-    if (t < S.lastLand) h = Math.max(h, 0.7 * sm(S.lastPop, S.lastPop + 0.12, t));
+    if (t < S.lastLand) h = Math.max(h, 0.45 * sm(S.lastPop, S.lastPop + 0.25, t));
+    const e = sm(S.lastPop, S.lastPop + 0.3, t) * (1 - sm(S.ember[0] + 0.6, S.ember[1], t));
+    g = Math.max(g, 0.85 * e);
+    hue = 1;
   }
   return { h, g, hue };
 }
@@ -205,9 +231,13 @@ export function simulate(fps: number, n = 31, rows = 55, spacing = 0.14): RodSim
   const peak = new Float32Array(count); // fastest speed since the last direction change
   const gs = new Float32Array(count), hs = new Float32Array(count);
 
-  // frame 0 starts mid-pop (the centre rod is already rising: motion on frame 1)
-  for (let i = 0; i < count; i++)
-    if (Math.hypot(layout.u[i], layout.v[i]) < 0.05) { y[i] = 0.3; vel[i] = 5.5; }
+  // frame 0 starts on the finished eye (the hook): rods already at their eye heights
+  for (let i = 0; i < count; i++) {
+    const e0 = eye(layout.u[i], layout.v[i], 0);
+    y[i] = e0.h;
+    gs[i] = e0.g; // glowing from the very first frame
+    hs[i] = e0.hue;
+  }
 
   for (let f = 0; f < frames; f++) {
     let sp = 0;

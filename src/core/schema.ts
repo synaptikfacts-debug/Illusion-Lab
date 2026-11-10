@@ -45,6 +45,8 @@ export const ReelSchema = z
     }),
     /** Last N seconds crossfade into frame 0 so the reel loops seamlessly. */
     loopBridgeSec: z.number().min(0.1).max(2).default(0.6),
+    /** false = the reel has a real ending: no crossfade back into frame 0 and no loop check. */
+    loop: z.boolean().default(true),
     illusion: EffectSchema,
     transform: EffectSchema,
     /** Shows the "intense visual pattern" notice at the start. */

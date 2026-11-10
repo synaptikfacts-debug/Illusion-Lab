@@ -139,7 +139,7 @@ export async function renderReel(id: string, opts: { serveUrl?: string; draft?: 
         `(worst window at ${flash.worstAt.luminance.toFixed(2)} s / ${flash.worstAt.red.toFixed(2)} s). See out/${id}/report.json`,
     );
   if (loud.silent) throw new Error("SOUND FAIL: the SFX mix is silent - every version needs sound effects (owner rule)");
-  if (loop > reel.loopTolerance) throw new Error(`LOOP FAIL: last frame differs from frame 0 by ${loop.toFixed(2)} (max ${reel.loopTolerance})`);
+  if (reel.loop && loop > reel.loopTolerance) throw new Error(`LOOP FAIL: last frame differs from frame 0 by ${loop.toFixed(2)} (max ${reel.loopTolerance})`);
 
   if (draft) {
     const files: string[] = [];

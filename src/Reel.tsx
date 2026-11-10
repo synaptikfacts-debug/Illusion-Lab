@@ -76,7 +76,7 @@ export const Reel: React.FC<CompositionProps> = (props) => {
           <Captions reel={reel} tl={tl} />
         </>
       )}
-      {!coverMode && (
+      {!coverMode && reel.loop && (
         <Sequence from={tl.bridge.start} durationInFrames={tl.bridge.dur} name="Loop bridge">
           <LoopBridge reel={reel} tl={tl} />
         </Sequence>

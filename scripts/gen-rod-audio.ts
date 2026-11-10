@@ -61,7 +61,23 @@ export function generateRodAudio(reel: Reel): string {
   }
 
   // 2) accents
-  play(out, unpitched("woodblock", 0), 0.0, 0.55, 0.5, undefined, 0.3, 0.2); // first pop (frame 0)
+  // lids: soft swishes (filtered noise shaped like the lid movement)
+  const swish = (at: number, dur: number, g: number, f0: number, f1: number) => {
+    const bp = new Biquad();
+    addWrapped(out, at, dur, 0.5, (t, i) => {
+      const x = t / dur;
+      if (i % 64 === 0) bp.set("bp", f0 + (f1 - f0) * x, 1.1);
+      return bp.run(r() * 2 - 1) * Math.sin(Math.PI * x) ** 2 * g;
+    });
+  };
+  // HOOK: a reversed cymbal breathes in under the stare, then the shatter hits on the shockwave
+  const pre = unpitched("cymbal", 4);
+  const preLen = Math.min(pre.sample[0].length / SR, STORY.explode);
+  playRamp(out, pre, STORY.explode - preLen, 0.15, 0.6, preLen, 0.5, true);
+  play(out, orch("timpani", 41), STORY.explode, 0.7, 0.5, undefined, 0.4);
+  play(out, unpitched("bassdrum", 0), STORY.explode, 0.5, 0.5, undefined, 0.4);
+  play(out, unpitched("cymbal", 0), STORY.explode + 0.01, 0.28, 0.5, undefined, 0.8, 0.35);
+  swish(STORY.explode, 1.1, 0.22, 3200, 500); // the whip pull-back
   for (const s of STORY.sources) play(out, { ...unpitched("woodblock", 1), rate: 0.85 + 0.1 * s.a }, s.t, 0.42 * s.a, 0.5 + 0.35 * s.u, undefined, 0.3, 0.3);
   // build through the spiral: reversed soft cymbal + real cymbal swell + timpani roll, all landing on the SNAP
   const [s0, s1] = STORY.spiral;
@@ -76,22 +92,13 @@ export function generateRodAudio(reel: Reel): string {
   play(out, orch("timpani", 41), STORY.snap, 0.75, 0.5, undefined, 0.4);
   play(out, unpitched("bassdrum", 2), STORY.snap, 0.55, 0.5, undefined, 0.4);
   play(out, unpitched("cymbal", 3), STORY.snap + 0.02, 0.22, 0.5, undefined, 0.6);
-  // lids: soft swishes (filtered noise shaped like the lid movement)
-  const swish = (at: number, dur: number, g: number, f0: number, f1: number) => {
-    const bp = new Biquad();
-    addWrapped(out, at, dur, 0.5, (t, i) => {
-      const x = t / dur;
-      if (i % 64 === 0) bp.set("bp", f0 + (f1 - f0) * x, 1.1);
-      return bp.run(r() * 2 - 1) * Math.sin(Math.PI * x) ** 2 * g;
-    });
-  };
   const [b0, b1] = STORY.blink;
   swish(b0, (b1 - b0) / 2, 0.2, 2400, 900);
   swish((b0 + b1) / 2, (b1 - b0) / 2, 0.14, 900, 2000);
   swish(STORY.close[0], STORY.close[1] - STORY.close[0], 0.16, 2000, 500);
   // THE END: the last rod
-  play(out, { ...unpitched("woodblock", 0), rate: 0.72 }, STORY.lastLand + 0.12, 0.7, 0.5, undefined, 0.3, 0.15);
-  play(out, orch("timpani", 41), STORY.lastLand + 0.12, 0.3, 0.5, undefined, 0.5);
+  play(out, { ...unpitched("woodblock", 2), rate: 0.9 }, STORY.lastLand, 0.28, 0.5, undefined, 0.3, 0.55); // soft last tock
+  swish(STORY.melt[0], STORY.melt[1] - STORY.melt[0], 0.07, 1200, 300); // the wall exhales
 
   // 3) air
   const [Lc, Rc] = out;
@@ -102,8 +109,9 @@ export function generateRodAudio(reel: Reel): string {
     const f = Math.min(sim.frames - 1, Math.floor((i / SR) * tl.fps));
     e += (sim.speed[f] / maxS - e) * 0.0005;
     if (i % 128 === 0) { bl.set("lp", 300 + 900 * e, 0.6); br.set("lp", 320 + 950 * e, 0.6); }
-    Lc[i] += bl.run(r() * 2 - 1) * e * 0.18;
-    Rc[i] += br.run(r() * 2 - 1) * e * 0.18;
+    const tail = 1 - Math.min(1, Math.max(0, (i / SR - STORY.fade[0]) / (STORY.fade[1] - STORY.fade[0])));
+    Lc[i] += bl.run(r() * 2 - 1) * e * 0.18 * tail;
+    Rc[i] += br.run(r() * 2 - 1) * e * 0.18 * tail;
   }
 
   reverb(out, { room: 0.8, damp: 0.45, wet: 0.2, preDelayMs: 12 });

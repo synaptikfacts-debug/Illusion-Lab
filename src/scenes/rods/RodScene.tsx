@@ -10,7 +10,7 @@ import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
-import type { RodSim } from "./sim";
+import { STORY, type RodSim } from "./sim";
 
 export interface RodLook {
   rod: string;
@@ -24,18 +24,20 @@ export interface RodLook {
 
 /** Camera keys: [t, px, py, pz, lx, ly, lz]. Start pose == end pose so the reel can loop after its ending. */
 const CAM: number[][] = [
-  [0.0, 0.35, 1.9, 1.7, 0, 0.3, 0],
-  [1.4, 0.5, 2.9, 2.9, 0, 0.2, 0],
-  [3.6, 0.0, 6.4, 7.2, 0, 0.0, 0],
-  [7.0, -1.4, 9.4, 6.2, 0, 0.0, 0],
-  [10.6, 0.0, 13.3, 3.0, 0, 0.0, -0.05],
-  [12.5, 0.0, 13.7, 2.0, 0, 0.0, -0.45],
-  [16.4, 0.0, 13.5, 2.0, 0, 0.0, -0.45],
-  [17.4, 0.0, 10.6, 1.5, 0, 0.0, -0.4],
-  [19.3, 0.0, 12.6, 2.0, 0, 0.0, -0.45],
-  [21.0, 0.3, 4.2, 3.4, 0, 0.2, 0],
-  [22.2, 0.35, 1.9, 1.7, 0, 0.3, 0],
-  [23.0, 0.35, 1.9, 1.7, 0, 0.3, 0],
+  [0.0, 0.0, 9.4, 1.2, 0, 0.0, -0.15],
+  [0.6, 0.0, 8.4, 1.1, 0, 0.0, -0.15],
+  [1.7, 0.0, 10.5, 5.2, 0, 0.0, 0],
+  [3.6, 0.0, 7.4, 7.4, 0, 0.0, 0],
+  [5.2, 0.0, 6.4, 7.2, 0, 0.0, 0],
+  [8.6, -1.4, 9.4, 6.2, 0, 0.0, 0],
+  [12.2, 0.0, 13.3, 3.0, 0, 0.0, -0.05],
+  [14.1, 0.0, 13.7, 2.0, 0, 0.0, -0.45],
+  [18.0, 0.0, 13.5, 2.0, 0, 0.0, -0.45],
+  [19.0, 0.0, 10.6, 1.5, 0, 0.0, -0.4],
+  [20.9, 0.0, 12.6, 2.0, 0, 0.0, -0.45],
+  [22.8, 0.0, 13.4, 2.2, 0, 0.0, -0.4],
+  [25.2, 0.0, 15.4, 3.4, 0, 0.0, -0.2],
+  [28.6, 0.0, 17.4, 4.2, 0, 0.0, -0.1],
 ];
 
 function camAt(t: number) {
@@ -54,11 +56,14 @@ function camAt(t: number) {
 }
 
 const VIGNETTE = {
-  uniforms: { tDiffuse: { value: null }, uAmount: { value: 0.42 } },
+  uniforms: { tDiffuse: { value: null }, uAmount: { value: 0.42 }, uFade: { value: 1 } },
   vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
-  fragmentShader: `uniform sampler2D tDiffuse; uniform float uAmount; varying vec2 vUv;
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float uAmount; uniform float uFade; varying vec2 vUv;
     void main(){ vec4 c = texture2D(tDiffuse, vUv); vec2 d = (vUv - 0.5) * vec2(1.0, 1.25);
-    c.rgb *= 1.0 - uAmount * smoothstep(0.25, 0.85, length(d)); gl_FragColor = c; }`,
+    c.rgb *= 1.0 - uAmount * smoothstep(0.25, 0.85, length(d));
+    // fade to black from the edges inwards: the ember in the centre goes last
+    float e = smoothstep(0.0, 1.0, uFade * 1.6 - length(d) * 0.9);
+    c.rgb *= mix(uFade * uFade, 1.0, e * uFade); gl_FragColor = c; }`,
 };
 
 const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), P = new THREE.Vector3(), S = new THREE.Vector3(), C = new THREE.Color();
@@ -111,10 +116,11 @@ const Contents: React.FC<{ sim: RodSim; frame: number; t: number; look: RodLook;
     c.addPass(new RenderPass(scene, camera));
     const bokeh = new BokehPass(scene, camera, { focus: 8, aperture: 0.0012, maxblur: 0.006 });
     c.addPass(bokeh);
-    c.addPass(new UnrealBloomPass(new THREE.Vector2(w * dpr, h * dpr), 0.55, 0.45, 1.6));
+    c.addPass(new UnrealBloomPass(new THREE.Vector2(w * dpr, h * dpr), 0.45, 0.4, 1.6));
     c.addPass(new OutputPass());
-    c.addPass(new ShaderPass(VIGNETTE));
-    return { c, bokeh };
+    const vig = new ShaderPass(VIGNETTE);
+    c.addPass(vig);
+    return { c, bokeh, vig };
   }, [gl, scene, camera, size.width, size.height, dpr]);
 
   // per-frame state from the simulation
@@ -130,7 +136,7 @@ const Contents: React.FC<{ sim: RodSim; frame: number; t: number; look: RodLook;
     meshes.caps.setMatrixAt(i, M);
     meshes.glows.setMatrixAt(i, M);
     const g = sim.glow[o];
-    C.copy(ga).lerp(gb, sim.hue[o]).multiplyScalar(g * g * 3.2);
+    C.copy(ga).lerp(gb, sim.hue[o]).multiplyScalar(g * g * 2.3);
     meshes.glows.setColorAt(i, C);
   }
   meshes.shafts.instanceMatrix.needsUpdate = true;
@@ -146,8 +152,11 @@ const Contents: React.FC<{ sim: RodSim; frame: number; t: number; look: RodLook;
   const u = composer.bokeh.uniforms as Record<string, THREE.IUniform>;
   u.focus.value = focus;
   // close shots get a shallow, macro-like depth of field; wide shots stay sharp
-  u.aperture.value = 0.0022 / Math.max(1, focus * 0.6);
+  u.aperture.value = 0.0016 / Math.max(1, focus * 0.6);
   u.maxblur.value = 0.009;
+
+  const fx = Math.min(1, Math.max(0, (t - STORY.fade[0]) / (STORY.fade[1] - STORY.fade[0])));
+  composer.vig.uniforms.uFade.value = 1 - fx * fx * (3 - 2 * fx);
 
   useFrame(() => composer.c.render(), 1);
 

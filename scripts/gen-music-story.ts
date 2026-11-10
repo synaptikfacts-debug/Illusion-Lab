@@ -25,7 +25,9 @@ export function generateStoryMusic(reel: Reel): string {
 
   // 0-7: a note per drop
   const drops = [77, 81, 84, 86, 79, 81, 89];
-  P(72, 0.0, 0.32, 0.5, 1.6, 1.6);
+  P(84, 0.0, 0.2, 0.5, 0.8, 1.2, 0.4); // the stare
+  for (const m of [29, 41]) P(m, STORY.explode, 0.4, 0.45, 1.6, 1.4, 0.45); // the shatter
+  [96, 93, 89, 84, 81, 77, 72, 69, 65, 60].forEach((m, i) => play(out, orch("harp", m), STORY.explode + i * 0.06, 0.18, 0.75 - i * 0.05));
   STORY.sources.forEach((s, i) => P(drops[i % drops.length], s.t, 0.3, 0.5 + 0.3 * s.u, 1.8, 1.6));
   play(out, orch("celli", 41), 1.0, 0.1, 0.4, 6.0, 1.2, 0.5);
   play(out, orch("violas", 57), 3.5, 0.07, 0.6, 3.6, 1.0, 0.5);
@@ -71,16 +73,17 @@ export function generateStoryMusic(reel: Reel): string {
   P(84, STORY.dilate[0] + 0.2, 0.2, 0.62, 1.4, 1.4, 0.45);
 
   // 17.9-21.8: closing -> resolve on the last rod
-  const C0 = STORY.close[0], END = STORY.lastLand + 0.12;
+  const C0 = STORY.close[0], END = STORY.lastLand;
   P(34, C0, 0.3, 0.42, 2.2, 1.0, 0.5);
   [58, 62, 65, 69, 72].forEach((m, j) => P(m, C0 + j * 0.38, 0.15, 0.4 + j * 0.06, 1.2, 0.9, 0.6));
   play(out, orch("celli", 46), C0, 0.1, 0.4, 2.3, 0.8, 0.5);
   P(36, C0 + 2.3, 0.28, 0.42, END - C0 - 2.3, 0.4, 0.5);
   [60, 65, 67, 70].forEach((m, j) => P(m, C0 + 2.3 + j * 0.42, 0.13, 0.45 + j * 0.05, 0.9, 0.6, 0.6));
   play(out, orch("violas", 58), C0 + 2.3, 0.07, 0.6, END - C0 - 2.3, 0.4, 0.5);
-  const ring = total - END - 0.15;
-  for (const m of [29, 41]) P(m, END, 0.36, 0.45, ring * 0.55, ring * 0.45, 0.45);
-  for (const m of [60, 65, 69, 72]) P(m, END + 0.03, 0.18, 0.55, ring * 0.55, ring * 0.45, 0.55);
+  const ring = total - END - 0.2;
+  for (const m of [29, 41]) P(m, END, 0.3, 0.45, ring * 0.5, ring * 0.5, 0.5);
+  for (const m of [60, 65, 69, 72]) P(m, END + 0.05, 0.15, 0.55, ring * 0.5, ring * 0.5, 0.6);
+  P(89, STORY.ember[0] + 1.1, 0.12, 0.6, 1.4, ring * 0.5, 0.5); // a last high note as the ember fades
 
   reverb(out, { room: 0.86, damp: 0.42, wet: 0.34, preDelayMs: 20, loop: false });
   const rel = `generated/${reel.id}-music.wav`;

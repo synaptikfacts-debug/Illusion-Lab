@@ -38,3 +38,9 @@ and is archived in reels/archive/.
 - SOUND HAS A VISIBLE CAUSE: drive SFX from the same simulation as the picture (events -> sounds), use real recorded
   samples (VSCO-2 percussion, Salamander piano), accents on every story beat, silence after the ending.
 - YouTube music follows the story beats and resolves on the ending (scripts/gen-music-story.ts is the model).
+- HOOK (owner, Nov 10: "not catchy at the start AT ALL"): frame 0 already shows the most striking image of the reel
+  (the payoff itself, e.g. the glowing eye staring at the viewer), moving, and within ~0.6 s something dramatic
+  happens to it (it shatters) so the viewer stays to see it come back. Never open on a calm, empty or grey shot.
+- ENDING (owner, Nov 10: "it's just ending like boom"): never cut, never crossfade back to frame 0. Settle slowly
+  (2-4 s): the subject closes/rests, the camera eases away, one last small detail (ember) fades, fade to black while
+  the last sound rings out. Reels with an ending set `loop: false`.
