@@ -51,6 +51,21 @@ and is archived in reels/archive/.
   Implemented as a real-time -> story-time map (dominoes/sim.ts tauAt + scripts/lib/domino-time.ts for audio).
 - VISUAL FX baseline: GPU particles from the simulation (sparks on impacts, dust, a dissolve ending), camera that
   arcs to 3/4 angles so motion reads in 3D. Length ~30-35 s is fine when every second moves.
-- LOOK PREFERENCE (owner, Nov 10): the chrome-rod world of 0004 is the house look ("the previous reel was much
-  better"); the domino reel 0005 was rejected ("I dont like the domino kind of effects"). New reels stay in the
-  rod world (RodScene + a new <story>Sim.ts with its own picture and expressions) unless the owner asks otherwise.
+
+## RULE: EVERY REEL MUST LOOK DIFFERENT (owner, Nov 10 2026 - after 0006 v1 reused 0004's rods and colours)
+"Same effects" means the same QUALITY (physical materials, strong hook, real ending, particles, sound from the
+motion) - NOT the same objects, materials, colours or effects. Each new reel needs its own:
+- object / material (rods, dominoes, glass, liquid, sand, cloth, light... never the previous reel's),
+- palette and lighting mood (dark studio vs bright dawn vs neon night...; never the last reel's colours),
+- signature visual effect and camera language,
+- sound palette (different instruments/samples and a different key/feel for the score).
+Before building, write one line: "Last two reels used X/Y. This one uses Z" and check nothing repeats.
+History: 0004 chrome rods, dark studio, teal/amber, piano score. 0005 obsidian dominoes, magenta/gold (rejected).
+0006 v1 = rods again (rejected for repeating 0004). 0006 v2 = floating glass cubes, bright dawn, harp/marimba.
+
+## RULE: ABSTRACT, MESMERIZING EFFECTS - NO FACES, NO PICTURES (owner, Nov 10 2026)
+The owner does not want reels that form a face, an eye, a butterfly or any picture ("why is there even a face?").
+What attracts viewers is pure, satisfying, abstract motion - e.g. the 0004 moment where a perfect ring/crater ripples
+through thousands of rods (screenshot reference). Build reels from mesmerizing physical phenomena: ripples, rings,
+interference, vortexes, spirals, waves, cascades, blooms - one after another, each more striking, with the quality bar
+(hook, physical look, ending, motion-driven sound) and the every-reel-different rule.

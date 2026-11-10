@@ -13,14 +13,14 @@ export interface ParticleData {
 
 export const PVERT = `
 attribute vec3 aP; attribute vec3 aV; attribute vec4 aT; attribute vec3 aC; attribute float aS;
-uniform float uT; uniform float uPx;
+uniform float uT; uniform float uPx; uniform float uFloor;
 varying vec3 vC; varying float vA;
 void main() {
   float age = uT - aT.x;
   if (age < 0.0 || age > aT.y) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; vA = 0.0; return; }
   vec3 p = aP + aV * age + vec3(0.0, 0.5 * aT.z * age * age, 0.0);
   p += aT.w * vec3(sin(age * 2.3 + aP.x * 7.0), 0.0, cos(age * 1.9 + aP.z * 5.0)) * age * 0.12;
-  p.y = max(p.y, 0.005);
+  p.y = max(p.y, uFloor);
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   gl_Position = projectionMatrix * mv;
   gl_PointSize = aS * uPx / -mv.z;
@@ -38,7 +38,7 @@ void main() {
   gl_FragColor = vec4(vC * a, a);
 }`;
 
-export function makeParticlePoints(d: ParticleData, pxPerUnit: number): THREE.Points {
+export function makeParticlePoints(d: ParticleData, pxPerUnit: number, floor = 0.005): THREE.Points {
   const g = new THREE.BufferGeometry();
   g.setAttribute("position", new THREE.BufferAttribute(d.p, 3));
   g.setAttribute("aP", new THREE.BufferAttribute(d.p, 3));
@@ -54,7 +54,7 @@ export function makeParticlePoints(d: ParticleData, pxPerUnit: number): THREE.Po
     depthWrite: false,
     blending: THREE.AdditiveBlending,
     toneMapped: false,
-    uniforms: { uT: { value: 0 }, uPx: { value: pxPerUnit } },
+    uniforms: { uT: { value: 0 }, uPx: { value: pxPerUnit }, uFloor: { value: floor } },
   });
   const p = new THREE.Points(g, m);
   p.frustumCulled = false;

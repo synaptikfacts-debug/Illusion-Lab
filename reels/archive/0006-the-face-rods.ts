@@ -1,4 +1,5 @@
-import { defineReel } from "../src/core/define";
+// ARCHIVED (Nov 10 2026): v1 of 0006, rejected - it repeated 0004s rods and colours. Rebuilt as glass cubes (reels/0006-the-face.ts).
+import { defineReel } from "../../src/core/define";
 
 // Same chrome-rod world as 0004 (owner: "the previous reel was much better"), new story:
 //  0-0.6     HOOK: frame 0 = a chrome face staring at you with glowing teal/amber eyes
@@ -14,7 +15,7 @@ import { defineReel } from "../src/core/define";
 const f = { grid: 45, rows: 80, spacing: 0.096, dpr: 2 };
 
 export default defineReel({
-  id: "0006-the-face",
+  id: "0006-the-face-rods",
   title: "3600 chrome rods come alive",
   seed: 6006,
   palette: { bg: "#06070a", fg: "#2fd8ff", accent: "#2fd8ff", accent2: "#ffb347" },

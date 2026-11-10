@@ -5,6 +5,7 @@ import { generatePinAudio } from "./gen-pin-audio";
 import { generateRodAudio } from "./gen-rod-audio";
 import { generateDominoAudio } from "./gen-domino-audio";
 import { generateFaceAudio } from "./gen-face-audio";
+import { generateLiquidAudio } from "./gen-liquid-audio";
 import { loadReel } from "./lib/reels";
 
 const id = process.argv[2];
@@ -17,5 +18,6 @@ if (reel.illusion.type === "pinWall") generatePinAudio(reel);
 if (reel.illusion.type === "rodStory") generateRodAudio(reel);
 if (reel.illusion.type === "dominoStory") generateDominoAudio(reel);
 if (reel.illusion.type === "faceStory") generateFaceAudio(reel);
+if (reel.illusion.type === "liquid") generateLiquidAudio(reel);
 if (reel.illusion.type === "bounceField") generateBounceAudio(reel);
 if (reel.audio.musicGen) generateMusic(reel);

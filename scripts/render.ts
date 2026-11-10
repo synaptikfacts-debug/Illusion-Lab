@@ -15,6 +15,7 @@ import { generatePinAudio } from "./gen-pin-audio";
 import { generateRodAudio } from "./gen-rod-audio";
 import { generateDominoAudio } from "./gen-domino-audio";
 import { generateFaceAudio } from "./gen-face-audio";
+import { generateLiquidAudio } from "./gen-liquid-audio";
 import { generateMusic } from "./gen-music";
 import { loopDiff, normaliseLoudness } from "./lib/checks";
 import { run } from "./lib/ffmpeg";
@@ -25,6 +26,7 @@ import { assetPaths, loadReel } from "./lib/reels";
 // GPU WebGL via ANGLE; "error" hides three.js deprecation chatter from the browser console.
 // CC BY 3.0 requires this credit wherever the in-house music (sampled piano) is published.
 const MUSIC_CREDIT = "Music: Illusion Lab. Piano samples: Salamander Grand Piano by Alexander Holm (CC BY 3.0).";
+const NO_PIANO_STYLES = ["liquid"]; // scores without the Salamander piano need no CC BY credit
 const MUSIC_CREDIT_SHORT = "Piano: Salamander Grand, A. Holm, CC BY 3.0"; // X (280 chars)
 
 const BROWSER = { chromiumOptions: { gl: "angle" as const }, logLevel: "error" as const };
@@ -84,6 +86,7 @@ export async function renderReel(id: string, opts: { serveUrl?: string; draft?: 
   if (usesGenerated && reel.illusion.type === "rodStory") generateRodAudio(reel);
   if (usesGenerated && reel.illusion.type === "dominoStory") generateDominoAudio(reel);
   if (usesGenerated && reel.illusion.type === "faceStory") generateFaceAudio(reel);
+  if (usesGenerated && reel.illusion.type === "liquid") generateLiquidAudio(reel);
   if (reel.audio.musicGen) generateMusic(reel);
   const missing = assetPaths(reel).filter((p) => !existsSync(p));
   if (missing.length) throw new Error(`Missing assets:\n  ${missing.join("\n  ")}`);
@@ -195,7 +198,7 @@ export async function renderReel(id: string, opts: { serveUrl?: string; draft?: 
         ...(spec.titleMax !== null ? ["", "TITLE:", text.title ?? ""] : []),
         "",
         spec.titleMax !== null ? "DESCRIPTION:" : "CAPTION:",
-        spec.music && hasMusic
+        spec.music && hasMusic && !NO_PIANO_STYLES.includes(reel.audio.musicGen?.style ?? "")
           ? fullCaption(`${text.caption.trim()}
 
 ${pid === "x" ? MUSIC_CREDIT_SHORT : MUSIC_CREDIT}`, text.hashtags)
