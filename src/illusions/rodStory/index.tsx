@@ -12,7 +12,7 @@ type P = z.output<typeof rodSchema>;
 function Story({ params, tl, offset }: { params: P; tl: Timeline; offset: number }) {
   const frame = useCurrentFrame() + offset;
   const sim = useMemo(() => simulate(tl.fps, params.grid, params.rows, params.spacing), [tl.fps, params.grid, params.rows, params.spacing]);
-  return <RodScene sim={sim} frame={frame} t={frame / tl.fps} look={params.look} dpr={params.dpr} />;
+  return <RodScene sim={sim} frame={frame} t={frame / tl.fps} look={params.look} dpr={params.dpr} zoom={params.zoom} glowBoost={params.glowBoost} />;
 }
 
 /** "The Eye": chrome rod wall with a story and an ending (pop, ripples, spiral, eye, blink, close, last rod). */

@@ -9,6 +9,9 @@ export const rodSchema = z.object({
   spacing: z.number().default(0.14),
   /** Supersampling factor for the 3D render (2 = render at 2x and downsample: clean HD edges). */
   dpr: z.number().min(1).max(3).default(2),
+  /** Thumbnails only: camera distance multiplier (<1 = closer) and glow multiplier. */
+  zoom: z.number().min(0.2).max(2).default(1),
+  glowBoost: z.number().min(0.5).max(3).default(1),
   look: z
     .object({ rod: hex, plate: hex, background: hex, glowA: hex, glowB: hex, key: hex, rim: hex })
     .default({ rod: "#8d939e", plate: "#14161b", background: "#06070a", glowA: "#2fd8ff", glowB: "#ffb347", key: "#fff1e0", rim: "#9cc8ff" }),

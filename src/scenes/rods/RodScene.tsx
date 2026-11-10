@@ -10,7 +10,7 @@ import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
-import { STORY, type RodSim } from "./sim";
+import { eye, STORY, type RodSim } from "./sim";
 
 export interface RodLook {
   rod: string;
@@ -68,7 +68,15 @@ const VIGNETTE = {
 
 const M = new THREE.Matrix4(), Q = new THREE.Quaternion(), P = new THREE.Vector3(), S = new THREE.Vector3(), C = new THREE.Color();
 
-const Contents: React.FC<{ sim: RodSim; frame: number; t: number; look: RodLook; dpr: number }> = ({ sim, frame, t, look, dpr }) => {
+const Contents: React.FC<{ sim: RodSim; frame: number; t: number; look: RodLook; dpr: number; zoom: number; glowBoost: number }> = ({
+  sim,
+  frame,
+  t,
+  look,
+  dpr,
+  zoom,
+  glowBoost,
+}) => {
   const { gl, scene, camera, size } = useThree();
   const L = sim.layout;
   const R = L.spacing * 0.4;
@@ -136,7 +144,12 @@ const Contents: React.FC<{ sim: RodSim; frame: number; t: number; look: RodLook;
     meshes.caps.setMatrixAt(i, M);
     meshes.glows.setMatrixAt(i, M);
     const g = sim.glow[o];
-    C.copy(ga).lerp(gb, sim.hue[o]).multiplyScalar(g * g * 2.3);
+    C.copy(ga).lerp(gb, sim.hue[o]).multiplyScalar(g * g * 2.3 * glowBoost);
+    if (glowBoost > 1) {
+      // thumbnails only: a faint glow on the white of the eye so the almond shape reads at a glance
+      const s = eye(L.u[i], L.v[i], t).inside * 0.2;
+      C.r += s * 0.85; C.g += s * 0.95; C.b += s;
+    }
     meshes.glows.setColorAt(i, C);
   }
   meshes.shafts.instanceMatrix.needsUpdate = true;
@@ -144,7 +157,8 @@ const Contents: React.FC<{ sim: RodSim; frame: number; t: number; look: RodLook;
   meshes.glows.instanceMatrix.needsUpdate = true;
   meshes.glows.instanceColor!.needsUpdate = true;
 
-  const [px, py, pz, lx, ly, lz] = camAt(t);
+  const [cx, cy, cz, lx, ly, lz] = camAt(t);
+  const px = lx + (cx - lx) * zoom, py = ly + (cy - ly) * zoom, pz = lz + (cz - lz) * zoom;
   camera.position.set(px, py, pz);
   camera.lookAt(lx, ly, lz);
   camera.updateMatrixWorld();
@@ -208,7 +222,12 @@ const Contents: React.FC<{ sim: RodSim; frame: number; t: number; look: RodLook;
   );
 };
 
-export const RodScene: React.FC<{ sim: RodSim; frame: number; t: number; look: RodLook; dpr?: number }> = ({ dpr = 2, ...props }) => {
+export const RodScene: React.FC<{ sim: RodSim; frame: number; t: number; look: RodLook; dpr?: number; zoom?: number; glowBoost?: number }> = ({
+  dpr = 2,
+  zoom = 1,
+  glowBoost = 1,
+  ...props
+}) => {
   const { width, height } = useVideoConfig();
   return (
     <ThreeCanvas
@@ -219,7 +238,7 @@ export const RodScene: React.FC<{ sim: RodSim; frame: number; t: number; look: R
       gl={{ antialias: true, preserveDrawingBuffer: true, powerPreference: "high-performance" }}
       camera={{ fov: 32, near: 0.05, far: 60, position: [0, 4, 8] }}
     >
-      <Contents {...props} dpr={dpr} />
+      <Contents {...props} dpr={dpr} zoom={zoom} glowBoost={glowBoost} />
     </ThreeCanvas>
   );
 };

@@ -141,7 +141,7 @@ export function eye(u: number, v: number, t: number) {
   h = Math.max(h, inside * glint * 1.0);
   g = Math.max(g, inside * glint);
   h = Math.max(h, 0.72 * rim * (0.4 + 0.6 * (1 - L) + 0.6 * L));
-  return { h, g: Math.min(1, g), hue };
+  return { h, g: Math.min(1, g), hue, inside: inside * (1 - iris) };
 }
 
 /** Target height for one rod at time t (before spring physics). */
