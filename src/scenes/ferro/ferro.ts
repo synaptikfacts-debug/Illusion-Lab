@@ -14,8 +14,9 @@ export const FSTORY = {
   glide: [0, 7.4] as [number, number],
   settle: 8.6,
   grow: [6.8, 11.5] as [number, number],
-  bloom: [12.0, 15.5] as [number, number],
-  crown: [17.0, 19.0] as [number, number],
+  bloom: [11.5, 15.0] as [number, number], // the field twists into spiral arms
+  swirl: [12.5, 20.5] as [number, number], // ...and spins faster into a whirlpool (spike galaxy)
+  crown: [40, 41] as [number, number], // (unused)
   off: 21.6,
   fade: [27.6, 29.8] as [number, number],
 };
@@ -48,7 +49,9 @@ export function controls(t: number) {
     bloom: sm(S.bloom[0], S.bloom[1], t),
     crown: sm(S.crown[0], S.crown[1], t),
     on,
-    rot: 0.05 * t + 0.25 * sm(S.bloom[0], 26, t) * (t - S.bloom[0]) * 0.12, // lattice turns slowly, more in the bloom
+    rot: 0.04 * t, // the lattice turns very slowly
+    spin: 0.11 * Math.max(0, Math.min(t, S.off + 1) - 11.5) ** 2, // spiral arms sweep round, faster and faster
+    swirl: sm(S.swirl[0], S.swirl[1], t) * on,
     melt: t - S.off, // seconds since the magnet switched off (negative before)
     mag: magAt(t),
     magOn: 0, // no travelling cluster (owner: too tall and confusing)
@@ -65,7 +68,7 @@ export function energy(t: number) {
 }
 
 export const FERRO_GLSL = /* glsl */ `
-uniform float uT, uGrow, uBloom, uCrown, uOn, uRot, uMelt;
+uniform float uT, uGrow, uBloom, uCrown, uOn, uRot, uMelt, uSwirl, uSpin;
 uniform vec3 uPulse[8];
 uniform vec2 uMag;
 uniform float uMagOn;
@@ -100,9 +103,11 @@ float envelope(vec2 c) {
   // the field grows over the pool
   float R = mix(0.4, 2.3, uGrow);
   e = max(e, uGrow * 0.85 * (1.0 - smoothstep(R - 0.5, R, r)));
-  // six-petal bloom, slowly turning
-  float petals = 0.5 + 0.5 * cos(6.0 * th - uRot * 2.0);
-  e *= mix(1.0, 0.04 + 1.25 * pow(petals, 2.5), uBloom);
+  // breathing waves roll through the field the whole time
+  e *= 0.78 + 0.22 * sin(5.0 * r - 2.4 * uT);
+  // spiral arms (a galaxy of spikes)
+  float arms = 0.5 + 0.5 * cos(4.0 * (th - uRot) + 6.0 * log(r + 0.05) - uSpin);
+  e *= mix(1.0, 0.02 + 1.2 * pow(arms, 3.0), uBloom);
   // crown: the centre rises tall
   e = min(e, 1.0);
   e += uCrown * 0.55 * exp(-r * r / 0.12);
@@ -110,7 +115,9 @@ float envelope(vec2 c) {
 }
 
 float height(vec2 p) {
-  float cr = cos(uRot), sr = sin(uRot);
+  float rp = length(p);
+  float ang = uRot; // crisp lattice (no warp: it smeared the spikes)
+  float cr = cos(ang), sr = sin(ang);
   vec2 q = vec2(cr * p.x - sr * p.y, sr * p.x + cr * p.y);
   vec2 c = hexCentre(q);
   float e = envelope(c);
@@ -120,10 +127,14 @@ float height(vec2 p) {
   float h = e * 0.42 * s;
   // the fluid heaps up a little under the spikes
   h += 0.07 * envelope(p * 0.999);
-  // after the magnet switches off: one ripple runs out from the centre
+  // the whirlpool: the liquid sinks in the middle as the galaxy spins
+  h -= uSwirl * 0.2 / (1.0 + rp * rp * 3.0);
+  // after the magnet switches off: a jet leaps from the centre and one big ring sweeps across the pool
   if (uMelt > 0.0) {
-    float r = length(p), front = r - 1.2 * uMelt;
-    h += 0.05 * sin(14.0 * front) * exp(-pow(front / 0.35, 2.0)) * exp(-uMelt * 0.6);
+    float front = rp - 1.3 * uMelt;
+    h += 0.09 * sin(12.0 * front) * exp(-pow(front / 0.4, 2.0)) * exp(-uMelt * 0.5);
+    h += 0.42 * exp(-rp * rp / 0.012) * max(0.0, sin(uMelt * 3.0)) * exp(-uMelt * 1.4) * step(uMelt, 1.05);
+    h -= 0.2 * exp(-rp * rp / 0.08) * exp(-uMelt * 2.5); // the whirlpool fills back in
   }
   return h;
 }

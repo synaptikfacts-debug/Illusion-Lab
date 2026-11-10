@@ -17,10 +17,10 @@ const CAM: number[][] = [
   [0.0, 0.0, 0.85, 2.5, 0, 0.08, 0],
   [4.0, 0.7, 1.25, 3.0, 0, 0.05, 0],
   [8.0, -1.6, 1.6, 3.4, 0, 0, 0],
-  [12.0, 1.4, 2.4, 3.0, 0, 0, 0],
-  [16.0, -1.4, 2.8, 2.8, 0, 0, 0],
-  [18.4, 0.6, 1.3, 2.6, 0, 0.2, 0],
-  [21.4, 0.2, 1.0, 2.8, 0, 0.1, 0],
+  [12.0, 1.2, 2.8, 2.6, 0, 0, 0],
+  [15.5, 0.3, 4.3, 1.4, 0, 0, 0],
+  [19.0, -0.5, 3.9, 1.7, 0, 0, 0],
+  [21.4, 0.2, 0.9, 2.6, 0, 0.1, 0],
   [25.0, 0.0, 1.4, 4.2, 0, 0, 0],
   [30.0, 0.0, 2.0, 5.6, 0, 0, 0],
 ];
@@ -56,7 +56,7 @@ const FRAG = /* glsl */ `
 ${FERRO_GLSL}
 uniform vec3 uCam;
 varying vec3 vWorld;
-vec3 env(vec3 R) {
+vec3 envOld(vec3 R) {
   float el = R.y, az = atan(R.x, -R.z);
   vec3 c = mix(vec3(0.001, 0.001, 0.003), vec3(0.008, 0.008, 0.016), smoothstep(-0.05, 0.6, el));
   float band = smoothstep(0.03, 0.1, el) * smoothstep(0.5, 0.36, el);
@@ -73,6 +73,34 @@ vec3 env(vec3 R) {
   c += mix(vec3(0.16, 0.42, 0.44), vec3(0.42, 0.18, 0.62), 0.5 + 0.5 * sin(az * 1.5)) * smoothstep(0.02, -0.35, el) * 0.38;
   return c;
 }
+// one neon ring, anti-aliased: widened by the pixel footprint (fw) with its energy kept, so it never shimmers
+float ring(float el, float c, float w, float fw) {
+  float ww = w + fw;
+  return smoothstep(ww, 0.0, abs(el - c)) * (w / ww);
+}
+vec3 env(vec3 R, float fw) {
+  float el = R.y, az = atan(R.x, -R.z);
+  vec3 c = vec3(0.002, 0.002, 0.005);
+  float lo = 1.0;
+  // below the horizon: a soft, blurred reflection of the rings in the pool (never a sharp contour soup)
+  if (el < 0.0) { el = -el * 1.6; fw += 0.05; lo = 0.22; }
+  c += vec3(3.4, 0.25, 1.6) * ring(el, 0.10, 0.012, fw) * 0.9;   // hot magenta
+  c += vec3(0.2, 2.8, 3.2) * ring(el, 0.19, 0.012, fw) * 0.9;    // cyan
+  c += vec3(1.6, 0.5, 3.6) * ring(el, 0.29, 0.012, fw) * 0.9;    // violet
+  c += vec3(3.4, 1.4, 0.3) * ring(el, 0.40, 0.010, fw) * 0.8;    // amber
+  c += vec3(3.0, 0.5, 2.0) * ring(el, 0.53, 0.009, fw) * 0.6;    // rose
+  c += vec3(0.3, 2.6, 2.4) * ring(el, 0.67, 0.010, fw) * 0.7;    // teal
+  c += vec3(3.0, 0.4, 2.2) * ring(el, 0.82, 0.010, fw) * 0.6;    // pink
+  c += vec3(2.6, 2.6, 2.6) * ring(el, 0.93, 0.006, fw) * 0.5;    // white crown ring
+  // a few vertical neon strips around the room (above the horizon only)
+  float sw = 0.02 + fw * 3.0;
+  float strips = smoothstep(sw, 0.0, abs(sin(az * 3.0 + 0.6))) * (0.02 / sw) * smoothstep(0.0, 0.08, el) * smoothstep(0.6, 0.3, el);
+  c += mix(vec3(0.3, 2.4, 2.8), vec3(2.8, 0.4, 2.2), 0.5 + 0.5 * sin(az)) * strips * 0.55 * step(0.0, R.y);
+  c *= lo;
+  // a faint coloured glow so nothing is dead black
+  c += mix(vec3(0.03, 0.10, 0.12), vec3(0.10, 0.03, 0.14), 0.5 + 0.5 * sin(az * 2.0)) * smoothstep(0.0, 0.6, R.y) * 0.6;
+  return c;
+}
 void main() {
   vec2 p = vWorld.xz;
   float e = 0.0025;
@@ -82,11 +110,12 @@ void main() {
   vec3 R = reflect(V, n);
   float cosv = max(dot(-V, n), 0.0);
   float fres = 0.04 + 0.96 * pow(1.0 - cosv, 5.0);
-  vec3 col = env(R) * (0.3 + 0.7 * fres) * 1.1;
+  float fw = min(0.08, fwidth(R.y) * 1.2); // how much the reflection changes across one pixel
+  vec3 col = env(R, fw) * (0.3 + 0.7 * fres) * 1.1;
   // sharp glints from two small key lights: crisp highlight lines down every spike
   vec3 L1 = normalize(vec3(0.6, 0.55, 0.6)), L2 = normalize(vec3(-0.7, 0.45, 0.3));
-  col += vec3(0.4, 2.2, 2.0) * pow(max(dot(R, L1), 0.0), 180.0);
-  col += vec3(1.8, 0.6, 2.8) * pow(max(dot(R, L2), 0.0), 180.0);
+  col += vec3(0.4, 2.2, 2.0) * pow(max(dot(R, L1), 0.0), 180.0 / (1.0 + fw * 60.0));
+  col += vec3(1.8, 0.6, 2.8) * pow(max(dot(R, L2), 0.0), 180.0 / (1.0 + fw * 60.0));
   col += vec3(0.004, 0.005, 0.009);
   float d = length(vWorld - uCam);
   col *= exp(-max(0.0, d - 6.0) * 0.08);
@@ -114,7 +143,7 @@ const Contents: React.FC<{ t: number; dpr: number; zoom: number }> = ({ t, dpr, 
       vertexShader: VERT,
       fragmentShader: FRAG,
       uniforms: {
-        uT: { value: 0 }, uGrow: { value: 0 }, uBloom: { value: 0 }, uCrown: { value: 0 }, uOn: { value: 1 }, uRot: { value: 0 }, uMelt: { value: -1 },
+        uT: { value: 0 }, uSwirl: { value: 0 }, uSpin: { value: 0 }, uGrow: { value: 0 }, uBloom: { value: 0 }, uCrown: { value: 0 }, uOn: { value: 1 }, uRot: { value: 0 }, uMelt: { value: -1 },
         uPulse: { value: FSTORY.pulses.map(() => new THREE.Vector3()) },
         uMag: { value: new THREE.Vector2() },
         uMagOn: { value: 1 },
@@ -161,7 +190,7 @@ const Contents: React.FC<{ t: number; dpr: number; zoom: number }> = ({ t, dpr, 
   camera.updateMatrixWorld();
   const u = mats.mat.uniforms, k = controls(t);
   void FSTORY;
-  u.uT.value = t; u.uGrow.value = k.grow; u.uBloom.value = k.bloom; u.uCrown.value = k.crown; u.uOn.value = k.on; u.uRot.value = k.rot; u.uMelt.value = k.melt;
+  u.uT.value = t; u.uSwirl.value = k.swirl; u.uSpin.value = k.spin; u.uGrow.value = k.grow; u.uBloom.value = k.bloom; u.uCrown.value = k.crown; u.uOn.value = k.on; u.uRot.value = k.rot; u.uMelt.value = k.melt;
   u.uCam.value.copy(camera.position);
   u.uMag.value.set(k.mag[0], k.mag[1]);
   u.uMagOn.value = k.magOn;

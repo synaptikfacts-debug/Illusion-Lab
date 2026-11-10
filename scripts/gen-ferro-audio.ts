@@ -36,8 +36,16 @@ export function generateFerroAudio(reel: Reel): string {
     if (k % 64 === 0) bp.set("bp", 2500 + 2000 * x, 1.5);
     return bp.run(r() * 2 - 1) * Math.sin(Math.PI * x) * 0.05;
   });
-  // the crown: one deeper pop
-  pop(S.crown[0] + 0.4, 120, 0.4, 0.5);
+  // the spin: a soft airy whirl that slowly rises as the galaxy turns faster
+  const wp = new Biquad();
+  const wl = S.off + 1 - S.swirl[0];
+  addWrapped(out, S.swirl[0], wl, 0.5, (t, k) => {
+    const x = t / wl;
+    if (k % 64 === 0) wp.set("bp", 500 + 900 * x * x, 2.2);
+    return wp.run(r() * 2 - 1) * Math.pow(Math.sin(Math.PI * Math.min(1, x * 0.92)), 1.5) * 0.09 * (0.8 + 0.2 * Math.sin(2 * Math.PI * (0.5 + 1.5 * x) * t));
+  });
+  // the jet as the magnet lets go: one deep soft pop
+  pop(S.off + 0.25, 110, 0.4, 0.5);
   // the melt: a slow sigh
   const lp = new Biquad();
   addWrapped(out, S.off, 3.2, 0.5, (t, k) => {
@@ -47,6 +55,6 @@ export function generateFerroAudio(reel: Reel): string {
   reverb(out, { room: 0.88, damp: 0.45, wet: 0.3, preDelayMs: 20, loop: false });
   const rel = `generated/${reel.id}-sfx.wav`;
   writeWav(join(ASSETS, rel), out, 1.0);
-  console.log(`wrote assets/${rel} (hum, ${S.pulses.length} pulse pops, bloom shimmer, melt sigh)`);
+  console.log(`wrote assets/${rel} (hum, ${S.pulses.length} pulse pops, bloom shimmer, spin whirl, jet pop, melt sigh)`);
   return rel;
 }

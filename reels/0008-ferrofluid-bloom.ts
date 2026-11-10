@@ -1,13 +1,14 @@
 import { defineReel } from "../src/core/define";
 
 // Owner's pick (concept 3 of 5, Nov 10), in the family of the favourite "Liquid Obsidian" but new phenomena and
-// palette: jet-black magnetic liquid, teal + electric-violet softboxes, white ring lights.
-//  0-6.4    HOOK: a ring of mirror spikes already standing; magnet pulses lift rings of spikes that run outward
+// palette: jet-black magnetic liquid in a studio of thin neon rings (magenta, cyan, violet, amber, rose, teal). v4
+// (owner: "boring", wants Obsidian-level): neon-line reflections on every spike, waves breathing through the field,
+// spiral arms that spin faster and faster (spike galaxy + whirlpool), a jet and one ring wave as the magnet cuts out.
+//  0-6.8    HOOK: a ring of mirror spikes already standing; magnet pulses lift rings of spikes that run outward
 //  6.8-11.5 the field grows from the centre over the whole pool
-//  12-17    the spikes bloom into a slowly turning six-petal flower
-//  17-19    a tall crown rises in the centre
-//  21.6     the magnet switches off: the spikes melt, one ripple runs out
-//  23-30    ENDING: a calm black mirror, fade
+//  11.5-21  spiral arms sweep the field, spinning faster; camera rises to look down on the galaxy
+//  21.6     the magnet switches off: a jet leaps from the centre, one big ring sweeps the pool
+//  23-30    ENDING: a calm neon mirror, slow fade
 const f = { dpr: 2 };
 
 export default defineReel({
@@ -25,10 +26,10 @@ export default defineReel({
   },
   cover: { at: 16.0 },
   publish: {
-    youtube: { title: "This liquid is magnetic", caption: "Ferrofluid follows a magnet. Watch it bloom, then melt.", hashtags: ["#shorts", "#satisfying", "#ferrofluid"] },
-    instagram: { caption: "Magnetic liquid. Watch it bloom, then melt.", hashtags: ["#reels", "#ferrofluid", "#oddlysatisfying", "#satisfying", "#3danimation"] },
-    facebook: { caption: "Magnetic liquid. Watch it bloom, then melt.", hashtags: ["#reels", "#ferrofluid"] },
-    tiktok: { caption: "this liquid is magnetic", hashtags: ["#fyp", "#ferrofluid", "#oddlysatisfying", "#satisfying", "#3danimation"] },
-    x: { caption: "Magnetic liquid. Watch it bloom, then melt.", hashtags: ["#ferrofluid"] },
+    youtube: { title: "This magnetic liquid turns into a galaxy", caption: "Magnetic liquid turns into a spinning galaxy, then lets go. 100% computer-made 3D animation of ferrofluid.", hashtags: ["#shorts", "#satisfying", "#ferrofluid"] },
+    instagram: { caption: "Magnetic liquid turns into a spinning galaxy, then lets go.", hashtags: ["#reels", "#ferrofluid", "#oddlysatisfying", "#satisfying", "#3danimation"] },
+    facebook: { caption: "Magnetic liquid turns into a spinning galaxy, then lets go.", hashtags: ["#reels", "#ferrofluid"] },
+    tiktok: { caption: "this magnetic liquid turns into a galaxy", hashtags: ["#fyp", "#ferrofluid", "#oddlysatisfying", "#satisfying", "#3danimation"] },
+    x: { caption: "Magnetic liquid turns into a spinning galaxy, then lets go.", hashtags: ["#ferrofluid"] },
   },
 });
