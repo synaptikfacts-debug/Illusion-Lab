@@ -10,7 +10,34 @@ import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
-import { DSTORY, type DominoSim } from "./sim";
+import { dissolveTime, type Particles } from "./particles";
+import { DSTORY, HOOK, type DominoSim } from "./sim";
+
+const PVERT = `
+attribute vec3 aP; attribute vec3 aV; attribute vec4 aT; attribute vec3 aC; attribute float aS;
+uniform float uT; uniform float uPx;
+varying vec3 vC; varying float vA;
+void main() {
+  float age = uT - aT.x;
+  if (age < 0.0 || age > aT.y) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); gl_PointSize = 0.0; vA = 0.0; return; }
+  vec3 p = aP + aV * age + vec3(0.0, 0.5 * aT.z * age * age, 0.0);
+  p += aT.w * vec3(sin(age * 2.3 + aP.x * 7.0), 0.0, cos(age * 1.9 + aP.z * 5.0)) * age * 0.12;
+  p.y = max(p.y, 0.005);
+  vec4 mv = modelViewMatrix * vec4(p, 1.0);
+  gl_Position = projectionMatrix * mv;
+  gl_PointSize = aS * uPx / -mv.z;
+  float k = age / aT.y;
+  vA = smoothstep(0.0, 0.06, k) * (1.0 - smoothstep(0.5, 1.0, k));
+  vC = aC;
+}`;
+const PFRAG = `
+varying vec3 vC; varying float vA;
+void main() {
+  vec2 c = gl_PointCoord - 0.5;
+  float a = exp(-dot(c, c) * 14.0) * vA;
+  if (a < 0.01) discard;
+  gl_FragColor = vec4(vC * a, a);
+}`;
 
 export interface DominoLook {
   body: string;
@@ -20,20 +47,27 @@ export interface DominoLook {
   rim: string;
 }
 
-/** Camera keys [t, px, py, pz, lx, ly, lz]: top-down hook, low macro tracking of the lane, rise, top-down, ease away. */
+/**
+ * Camera keys in REAL video time [t, px, py, pz, lx, ly, lz]:
+ * low and close inside the crashing swirl (hook) -> whip up through the rewind -> low macro tracking of the fuse ->
+ * rise and orbit through the reveal -> top-down -> 3/4 arcs so the wing beats read in 3D -> rise with the dust.
+ */
 const CAM: number[][] = [
-  [0.0, 0, 12.6, 1.1, 0, 0, -0.15],
-  [0.6, 0, 11.8, 1.0, 0, 0, -0.15],
-  [1.6, 0.3, 6.8, 7.4, 0, 0, 1.2],
-  [2.2, 0.62, 0.7, 5.35, 0.05, 0.04, 3.45],
-  [5.0, 0.62, 0.82, 1.25, 0.05, 0.04, -0.4],
-  [6.2, 0.6, 2.8, 2.9, 0, 0, -0.2],
-  [8.4, -1.4, 7.6, 5.6, 0, 0, -0.2],
-  [11.4, 0, 13.4, 1.6, 0, 0, -0.15],
-  [13.2, 0, 13.4, 1.6, 0, 0, -0.15],
-  [15.8, 0, 12.0, 1.4, 0, 0, -0.15],
-  [19.0, 0, 13.2, 1.6, 0, 0, -0.15],
-  [24.5, 0, 16.6, 2.4, 0, 0, -0.1],
+  [0.0, 1.25, 0.5, 1.05, 0, 0.04, -0.35],
+  [1.4, 0.55, 0.75, 0.55, 0, 0.02, -0.5],
+  [1.85, 0.2, 5.2, 4.2, 0, 0, 0.8],
+  [2.3, 0.62, 0.72, 5.4, 0.05, 0.04, 3.45],
+  [5.65, 0.62, 0.84, 1.15, 0.05, 0.04, -0.45],
+  [7.0, 0.7, 2.9, 2.9, 0, 0, -0.2],
+  [10.2, -1.5, 7.8, 5.6, 0, 0, -0.2],
+  [13.6, 0, 13.4, 1.6, 0, 0, -0.15],
+  [15.0, 0, 13.4, 1.6, 0, 0, -0.15],
+  [17.8, 2.9, 7.4, 4.6, 0, 0.1, -0.35],
+  [20.8, -2.7, 7.8, 4.4, 0, 0.1, -0.35],
+  [23.6, 0, 12.9, 1.8, 0, 0, -0.15],
+  [25.6, 0, 12.9, 2.0, 0, 0, -0.15],
+  [29.0, 0, 11.4, 4.6, 0, 0.6, -0.5],
+  [32.1, 0, 14.6, 3.8, 0, 0.9, -0.5],
 ];
 
 function camAt(t: number) {
@@ -51,10 +85,14 @@ function camAt(t: number) {
 }
 
 const POST = {
-  uniforms: { tDiffuse: { value: null }, uAmount: { value: 0.45 }, uFade: { value: 1 } },
+  uniforms: { tDiffuse: { value: null }, uAmount: { value: 0.45 }, uFade: { value: 1 }, uRew: { value: 0 } },
   vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
-  fragmentShader: `uniform sampler2D tDiffuse; uniform float uAmount; uniform float uFade; varying vec2 vUv;
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float uAmount; uniform float uFade; uniform float uRew; varying vec2 vUv;
     void main(){ vec4 c = texture2D(tDiffuse, vUv); vec2 d = (vUv - 0.5) * vec2(1.0, 1.25);
+    // rewind look: colour fringing + a cool tint while time runs backwards
+    float o = 0.006 * uRew;
+    c.r = texture2D(tDiffuse, vUv + vec2(o, 0.0)).r; c.b = texture2D(tDiffuse, vUv - vec2(o, 0.0)).b;
+    c.rgb = mix(c.rgb, c.rgb * vec3(0.8, 0.95, 1.2), uRew * 0.6);
     c.rgb *= 1.0 - uAmount * smoothstep(0.25, 0.85, length(d));
     float e = smoothstep(0.0, 1.0, uFade * 1.6 - length(d) * 0.9);
     c.rgb *= mix(uFade * uFade, 1.0, e * uFade); gl_FragColor = c; }`,
@@ -63,10 +101,12 @@ const POST = {
 const M = new THREE.Matrix4(), M2 = new THREE.Matrix4(), M3 = new THREE.Matrix4(), C = new THREE.Color();
 const W = 0.085, H = 0.095, D = 0.026;
 
-const Contents: React.FC<{ sim: DominoSim; frame: number; t: number; look: DominoLook; dpr: number; zoom: number; glowBoost: number }> = ({
+const Contents: React.FC<{ sim: DominoSim; parts: Particles; frame: number; t: number; tau: number; look: DominoLook; dpr: number; zoom: number; glowBoost: number }> = ({
   sim,
+  parts,
   frame,
   t,
+  tau,
   look,
   dpr,
   zoom,
@@ -114,11 +154,36 @@ const Contents: React.FC<{ sim: DominoSim; frame: number; t: number; look: Domin
     body.castShadow = true;
     body.receiveShadow = true;
     face.receiveShadow = true;
-    for (let i = 0; i < L.count; i++) face.setColorAt(i, C.setRGB(L.colR[i], L.colG[i], L.colB[i], THREE.SRGBColorSpace));
-    face.instanceColor!.needsUpdate = true;
+    face.setColorAt(0, C.setRGB(1, 1, 1));
+    const td = new Float32Array(L.count);
+    for (let i = 0; i < L.count; i++) td[i] = L.glow[i] > 0.15 ? dissolveTime(L.u[i], L.v[i], L.body[i]) : 1e9;
     glow.setColorAt(0, C.setRGB(0, 0, 0));
-    return { body, face, glow };
+    return { body, face, glow, td };
   }, [L, look.body]);
+
+  const points = useMemo(() => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(parts.p, 3));
+    g.setAttribute("aP", new THREE.BufferAttribute(parts.p, 3));
+    g.setAttribute("aV", new THREE.BufferAttribute(parts.v, 3));
+    g.setAttribute("aT", new THREE.BufferAttribute(parts.t, 4));
+    g.setAttribute("aC", new THREE.BufferAttribute(parts.c, 3));
+    g.setAttribute("aS", new THREE.BufferAttribute(parts.s, 1));
+    g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 50);
+    const m = new THREE.ShaderMaterial({
+      vertexShader: PVERT,
+      fragmentShader: PFRAG,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      toneMapped: false,
+      uniforms: { uT: { value: 0 }, uPx: { value: (size.height * dpr) / (2 * Math.tan((16 * Math.PI) / 180)) } },
+    });
+    const p = new THREE.Points(g, m);
+    p.frustumCulled = false;
+    return p;
+  }, [parts, size.height, dpr]);
+  (points.material as THREE.ShaderMaterial).uniforms.uT.value = tau;
 
   const composer = useMemo(() => {
     const w = size.width, h = size.height;
@@ -154,7 +219,12 @@ const Contents: React.FC<{ sim: DominoSim; frame: number; t: number; look: Domin
     const g = sim.light[o] * glowBoost;
     C.setRGB(L.colR[i], L.colG[i], L.colB[i], THREE.SRGBColorSpace).multiplyScalar(g * 1.45);
     meshes.glow.setColorAt(i, C);
+    // the colour leaves with the dust: faces go dark as each domino dissolves
+    const x = Math.min(1, Math.max(0, (tau - meshes.td[i] - 0.3) / 1.1));
+    const keep = 1 - 0.9 * x * x * (3 - 2 * x);
+    meshes.face.setColorAt(i, C.setRGB(L.colR[i] * keep + 0.02 * (1 - keep), L.colG[i] * keep + 0.02 * (1 - keep), L.colB[i] * keep + 0.04 * (1 - keep), THREE.SRGBColorSpace));
   }
+  meshes.face.instanceColor!.needsUpdate = true;
   meshes.body.instanceMatrix.needsUpdate = true;
   meshes.face.instanceMatrix.needsUpdate = true;
   meshes.glow.instanceMatrix.needsUpdate = true;
@@ -169,16 +239,19 @@ const Contents: React.FC<{ sim: DominoSim; frame: number; t: number; look: Domin
   const u = composer.bokeh.uniforms as Record<string, THREE.IUniform>;
   u.focus.value = focus;
   u.aperture.value = 0.0028 / Math.max(1, focus * 0.7);
-  const fx = Math.min(1, Math.max(0, (t - DSTORY.fade[0]) / (DSTORY.fade[1] - DSTORY.fade[0])));
-  composer.post.uniforms.uFade.value = 1 - fx * fx * (3 - 2 * fx);
+  const fx = Math.min(1, Math.max(0, (tau - DSTORY.fade[0]) / (DSTORY.fade[1] - DSTORY.fade[0])));
+  composer.post.uniforms.uFade.value = t < 3 ? 1 : 1 - fx * fx * (3 - 2 * fx);
+  const a = HOOK.to - HOOK.from;
+  const rw = (t - a) / HOOK.rewindLen;
+  composer.post.uniforms.uRew.value = rw > 0 && rw < 1 ? Math.sin(Math.PI * rw) ** 0.6 : 0;
 
   useFrame(() => composer.c.render(), 1);
 
   const hx = (L.cols * L.spacing) / 2 + 0.1, hz = (L.rows * L.spacing) / 2 + 0.1;
   const laneIdx = L.lane.indexOf(1);
-  const laneSteps = (t - DSTORY.lane.start) / DSTORY.lane.step;
+  const laneSteps = (tau - DSTORY.lane.start) / DSTORY.lane.step;
   const sparkZ = hz - 0.1 - laneSteps * L.spacing;
-  const sparkOn = t > DSTORY.lane.start && t < DSTORY.bloom.start + 0.6 ? Math.min(1, (t - DSTORY.lane.start) * 4) * Math.min(1, (DSTORY.bloom.start + 0.6 - t) * 3) : 0;
+  const sparkOn = t > 2.3 && tau > DSTORY.lane.start && tau < DSTORY.bloom.start + 0.6 ? Math.min(1, (tau - DSTORY.lane.start) * 4) * Math.min(1, (DSTORY.bloom.start + 0.6 - tau) * 3) : 0;
   return (
     <>
       <hemisphereLight args={["#9fb0e0", "#040406", 0.22]} />
@@ -204,19 +277,20 @@ const Contents: React.FC<{ sim: DominoSim; frame: number; t: number; look: Domin
       <primitive object={meshes.body} />
       <primitive object={meshes.face} />
       <primitive object={meshes.glow} />
+      <primitive object={points} />
       <mesh position={[0, -0.06, 0]} receiveShadow>
         <boxGeometry args={[hx * 2, 0.12, hz * 2]} />
         <meshPhysicalMaterial color={look.plate} metalness={0.4} roughness={0.32} clearcoat={0.8} />
       </mesh>
       <mesh rotation-x={-Math.PI / 2} position-y={-0.13} receiveShadow>
         <planeGeometry args={[60, 60]} />
-        <meshStandardMaterial color={look.background} roughness={0.6} metalness={0.1} />
+        <meshBasicMaterial color="#000000" />
       </mesh>
     </>
   );
 };
 
-export const DominoScene: React.FC<{ sim: DominoSim; frame: number; t: number; look: DominoLook; dpr?: number; zoom?: number; glowBoost?: number }> = ({
+export const DominoScene: React.FC<{ sim: DominoSim; parts: Particles; frame: number; t: number; tau: number; look: DominoLook; dpr?: number; zoom?: number; glowBoost?: number }> = ({
   dpr = 2,
   zoom = 1,
   glowBoost = 1,

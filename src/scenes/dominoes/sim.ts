@@ -4,17 +4,36 @@
 // and lighting the butterfly -> the wings beat (wing dominoes lift and drop in waves) -> last slow beat, glow fades
 // from the wingtips inward, body last -> fade to black. Pure TS, deterministic, shared by picture and sound.
 
+/** Story time (tau). The VIDEO plays it through HOOK below: action first, a visible rewind, then the story. */
 export const DSTORY = {
-  duration: 24.5,
-  rewind: [0.6, 1.55] as [number, number],
-  lane: { start: 2.2, step: 0.068 },
-  bloom: { start: 0, speed: 0.78, swirl: 0.55 }, // start = set from the lane (when the chain reaches the centre)
-  beats: [13.4, 14.5, 15.6, 17.6] as number[], // wing beats (the last one slow)
-  beatLen: [0.95, 0.95, 1.1, 1.9] as number[],
-  fadeGlow: [19.6, 22.4] as [number, number],
-  fade: [21.6, 24.2] as [number, number],
+  duration: 31.8,
+  rewind: [0.6, 1.55] as [number, number], // (never shown: the video rewinds itself, see HOOK)
+  lane: { start: 2.2, step: 0.075 },
+  bloom: { start: 0, speed: 0.62, swirl: 0.6 }, // start = set from the lane (when the chain reaches the centre)
+  beats: [14.8, 16.0, 17.2, 19.0, 21.0, 23.0] as number[], // wing beats
+  beatLen: [0.95, 0.95, 1.4, 1.6, 1.5, 2.1] as number[],
+  beatAmp: [0.9, 0.9, 1.0, 1.1, 1.05, 1.2] as number[],
+  fadeGlow: [25.2, 28.6] as [number, number], // = the dust dissolve (wingtips first, body last)
+  fade: [29.2, 31.6] as [number, number],
   thetaMax: (88 * Math.PI) / 180,
 };
+
+/**
+ * Real video time -> story time. 0-1.4 s: the swirl at its most dynamic (tau 6.6-8.0). 1.4-2.3 s: time runs
+ * backwards fast to tau 2.0 (everything un-falls). Then the story plays from the fuse.
+ */
+export const HOOK = { from: 6.6, to: 8.0, rewindLen: 0.9, resume: 2.0 };
+export const REAL_DURATION = DSTORY.duration + (HOOK.to - HOOK.from) + HOOK.rewindLen - HOOK.resume;
+export function tauAt(t: number): number {
+  const a = HOOK.to - HOOK.from;
+  if (t < a) return HOOK.from + t;
+  if (t < a + HOOK.rewindLen) {
+    const x = (t - a) / HOOK.rewindLen;
+    const e = x * x * (3 - 2 * x);
+    return HOOK.to + (HOOK.resume - HOOK.to) * e;
+  }
+  return t - a - HOOK.rewindLen + HOOK.resume;
+}
 
 export interface DominoLayout {
   cols: number;
@@ -206,12 +225,12 @@ export function simulateDominoes(fps: number, cols = 44, rows = 78, spacing = 0.
       if (L.wing[i] > 0)
         S.beats.forEach((b, j) => {
           const len = S.beatLen[j], d = t - b - L.wing[i] * 0.22;
-          if (d > 0 && d < len) lift = Math.max(lift, Math.sin((Math.PI * d) / len) ** 2 * (0.25 + 0.75 * L.wing[i]) * (j === 3 ? 1.15 : 1));
+          if (d > 0 && d < len) lift = Math.max(lift, Math.sin((Math.PI * d) / len) ** 2 * (0.25 + 0.75 * L.wing[i]) * S.beatAmp[j]);
         });
       th -= lift * 0.95;
       theta[f * L.count + i] = th;
       // glow: on in the hook, off after the rewind, back on as each face lands, pulses with the beats, fades at the end
-      const on = t < L.rise[i] + 0.1 ? 1 : sm(land, land + 0.6, t);
+      const on = t < L.rise[i] + 0.1 ? 1 : sm(land, land + 0.3, t);
       const end = L.body[i] ? 1 - sm(S.fadeGlow[1] - 0.2, S.fade[1] - 0.6, t) : 1 - sm(glowEnd - 1.2, glowEnd, t);
       // the fuse burns out below the butterfly once the burst starts
       const burnt = L.lane[i] && L.v[i] < -0.8 ? 1 - 0.85 * sm(S.bloom.start + 0.3, S.bloom.start + 2.5, t) : 1;

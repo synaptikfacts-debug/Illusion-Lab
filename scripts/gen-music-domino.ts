@@ -15,6 +15,7 @@ import { DSTORY } from "../src/scenes/dominoes/sim";
 import { simulateDominoes } from "../src/scenes/dominoes/sim";
 import { dominoSchema } from "../src/illusions/dominoStory/schema";
 import { reverb, stereo, writeWav } from "./lib/dsp";
+import { warpToReal } from "./lib/domino-time";
 import { ASSETS } from "./lib/paths";
 import { orch, piano, play } from "./lib/sampler";
 
@@ -26,7 +27,7 @@ export function generateDominoMusic(reel: Reel): string {
   const tl = timeline(reel);
   simulateDominoes(tl.fps, p.cols, p.rows, p.spacing); // sets DSTORY.bloom.start
   const total = tl.total / tl.fps;
-  const out = stereo(total);
+  const out = stereo(DSTORY.duration); // story time, warped to the video timeline at the end
   const r = rng(reel.seed, "domino-music");
   const h = () => (r() - 0.5) * 0.014;
   const P = (m: number, at: number, g: number, pan = 0.5, dur = 1.2, rel = 1.2, tone = 0.55) => play(out, piano(m), at + h(), g, pan, dur, rel, tone);
@@ -55,7 +56,7 @@ export function generateDominoMusic(reel: Reel): string {
   play(out, orch("violas", 62), B + 0.3, 0.09, 0.6, 6.0, 1.2, 0.45);
   play(out, orch("violins", 74, true), B + 2.5, 0.06, 0.7, 4.0, 1.2, 0.45);
   const prog: [number, number[]][] = [[50, [62, 66, 69, 73]], [47, [59, 62, 66, 69]], [43, [59, 62, 67, 71]], [45, [61, 64, 69, 73]]];
-  const seg = (11.5 - B) / prog.length;
+  const seg = (13.0 - B) / prog.length;
   prog.forEach(([bass, ch], j) => {
     const t0 = B + j * seg;
     P(bass - 12, t0, 0.3, 0.42, seg, 1.0, 0.5);
@@ -63,13 +64,13 @@ export function generateDominoMusic(reel: Reel): string {
     for (let k = 0; k * 0.2 < seg; k++) P(arp[k % arp.length] + 12, t0 + k * 0.2, 0.12 + 0.05 * (k % 2 ? 0 : 1), 0.35 + r() * 0.3, 0.35, 0.6, 0.6);
   });
   // full reveal
-  P(43, 11.5, 0.3, 0.45, 1.0, 0.8, 0.5);
-  for (const m of [26, 38]) P(m, 12.4, 0.36, 0.45, 1.6, 1.4, 0.45);
-  for (const m of [62, 66, 69, 74, 78]) P(m, 12.4, 0.17, 0.55, 1.6, 1.4, 0.5);
-  [93, 98, 102, 105].forEach((m, i) => play(out, orch("glockenspiel", m), 12.4 + i * 0.09, 0.13, 0.4 + i * 0.1));
+  P(43, 13.0, 0.3, 0.45, 1.0, 0.8, 0.5);
+  for (const m of [26, 38]) P(m, 13.9, 0.36, 0.45, 1.6, 1.4, 0.45);
+  for (const m of [62, 66, 69, 74, 78]) P(m, 13.9, 0.17, 0.55, 1.6, 1.4, 0.5);
+  [93, 98, 102, 105].forEach((m, i) => play(out, orch("glockenspiel", m), 13.9 + i * 0.09, 0.13, 0.4 + i * 0.1));
 
   // wing beats
-  const beatCh = [[62, 66, 69, 74], [59, 62, 66, 71], [55, 59, 62, 67], [57, 61, 64, 69]];
+  const beatCh = [[62, 66, 69, 74], [59, 62, 66, 71], [55, 59, 62, 67], [57, 61, 64, 69], [52, 55, 59, 64], [57, 62, 64, 69]];
   S.beats.forEach((b, j) => {
     const len = S.beatLen[j], ch = beatCh[j];
     for (let i = 0; i < 10; i++) play(out, orch("harp", deg(62, i + j)), b + i * (len * 0.45) / 10, 0.14, 0.3 + i * 0.04);
@@ -77,7 +78,8 @@ export function generateDominoMusic(reel: Reel): string {
     P(ch[0] - 24, b + len * 0.45, 0.24, 0.45, len, 0.9, 0.5);
     play(out, orch("glockenspiel", Math.min(108, ch[3] + 24)), b + len * 0.5, 0.11, 0.6);
   });
-  play(out, orch("violas", 59), S.beats[0], 0.08, 0.6, S.beats[3] - S.beats[0] + 1, 1.2, 0.45);
+  play(out, orch("violas", 59), S.beats[0], 0.08, 0.6, S.beats[S.beats.length - 1] - S.beats[0] + 1.5, 1.2, 0.45);
+  play(out, orch("violins", 74, true), S.beats[2], 0.05, 0.7, S.beats[5] - S.beats[2] + 1.5, 1.2, 0.45);
 
   // ending
   const E = S.fadeGlow[0];
@@ -94,7 +96,7 @@ export function generateDominoMusic(reel: Reel): string {
 
   reverb(out, { room: 0.86, damp: 0.42, wet: 0.34, preDelayMs: 20, loop: false });
   const rel = `generated/${reel.id}-music.wav`;
-  writeWav(join(ASSETS, rel), out, 1.0);
+  writeWav(join(ASSETS, rel), warpToReal(out, total), 1.0);
   console.log(`wrote assets/${rel} (domino story score, burst at ${B.toFixed(2)} s, final chord at ${END.toFixed(2)} s)`);
   return rel;
 }

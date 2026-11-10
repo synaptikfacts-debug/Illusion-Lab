@@ -45,3 +45,9 @@ and is archived in reels/archive/.
 - ENDING (owner, Nov 10: "it's just ending like boom"): never cut, never crossfade back to frame 0. Settle slowly
   (2-4 s): the subject closes/rests, the camera eases away, one last small detail (ember) fades, fade to black while
   the last sound rings out. Reels with an ending set `loop: false`.
+- HOOK PATTERN that works (owner, Nov 10 on 0005 v1: "doesn't look catchy at the beginning"): never open on a still,
+  top-down picture. Open MID-ACTION at the story's most dynamic moment (low, close, things flying toward the lens,
+  sparks), then make time visibly run backwards (tape-rewind look + sound) and play the story from the start.
+  Implemented as a real-time -> story-time map (dominoes/sim.ts tauAt + scripts/lib/domino-time.ts for audio).
+- VISUAL FX baseline: GPU particles from the simulation (sparks on impacts, dust, a dissolve ending), camera that
+  arcs to 3/4 angles so motion reads in 3D. Length ~30-35 s is fine when every second moves.

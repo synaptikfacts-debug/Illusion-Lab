@@ -13,6 +13,7 @@ import { timeline } from "../src/core/timing";
 import { dominoSchema } from "../src/illusions/dominoStory/schema";
 import { DSTORY, simulateDominoes } from "../src/scenes/dominoes/sim";
 import { addWrapped, Biquad, reverb, SR, stereo, type Stereo, writeWav } from "./lib/dsp";
+import { addRewindSweep, warpToReal } from "./lib/domino-time";
 import { ASSETS } from "./lib/paths";
 import { orch, play, unpitched } from "./lib/sampler";
 
@@ -37,7 +38,7 @@ export function generateDominoAudio(reel: Reel): string {
   const total = tl.total / tl.fps;
   const sim = simulateDominoes(tl.fps, p.cols, p.rows, p.spacing);
   const L = sim.layout;
-  const out = stereo(total);
+  const out = stereo(DSTORY.duration); // written in story time, warped to the video timeline at the end
   const r = rng(reel.seed, "domino-sfx");
   const clicks = [unpitched("woodblock", 2), unpitched("woodblock", 3), unpitched("woodblock", 1)];
   const panOf = (i: number) => 0.5 + 0.42 * L.u[i];
@@ -105,12 +106,34 @@ export function generateDominoAudio(reel: Reel): string {
     swish(b + 0.05, len, j === 3 ? 0.16 : 0.12, 600, 1800, 0.6);
   });
 
+  // dust sparkles: soft triangle/glockenspiel pings as the wings shed dust and as the butterfly dissolves
+  const sp = (at: number, g: number) => play(out, { ...unpitched("triangle", 0), rate: 1.2 + r() * 1.1 }, at, g, 0.2 + r() * 0.6, undefined, 0.4, 0.35);
+  DSTORY.beats.forEach((b, j) => { for (let k = 0; k < 4; k++) sp(b + DSTORY.beatLen[j] * (0.4 + r() * 0.4), 0.05); });
+  for (let k = 0; k < 70; k++) { const x = k / 70; sp(DSTORY.fadeGlow[0] - 0.8 + x * (DSTORY.fadeGlow[1] - DSTORY.fadeGlow[0] + 0.6) + r() * 0.1, 0.07 * (1 - 0.5 * x)); }
+  swish(DSTORY.fadeGlow[0] - 0.6, DSTORY.fadeGlow[1] - DSTORY.fadeGlow[0] + 1.5, 0.08, 2500, 6000);
+
   // ending: last chime as the body glow goes out
   play(out, { ...unpitched("triangle", 1), rate: 0.94 }, DSTORY.fadeGlow[1] + 0.3, 0.2, 0.5, undefined, 0.5, 0.3);
 
   reverb(out, { room: 0.82, damp: 0.42, wet: 0.22, preDelayMs: 14, loop: false });
   const rel = `generated/${reel.id}-sfx.wav`;
-  writeWav(join(ASSETS, rel), out, 1.05);
+  const real = warpToReal(out, total);
+  addRewindSweep(real, r);
+  // HOOK on the real timeline: a crisp burst of clacks on frame 0 + a rising whoosh under the push-in
+  for (let k = 0; k < 14; k++)
+    play(real, { ...clicks[k % 3], rate: 1.6 + r() * 0.6 }, k * 0.018 + r() * 0.01, 0.32 - k * 0.012, 0.25 + r() * 0.5, undefined, 0.2, 0.25);
+  play(real, orch("timpani", 50), 0.0, 0.35, 0.5, undefined, 0.4);
+  {
+    const bp = new Biquad();
+    const len = 1.4;
+    for (let i = 0; i < len * SR; i++) {
+      const x = i / (len * SR);
+      if (i % 32 === 0) bp.set("bp", 400 + 2600 * x * x, 1.0);
+      const v = bp.run(r() * 2 - 1) * Math.sin(Math.PI * Math.min(1, x * 1.1)) * 0.22 * x;
+      real[0][i] += v; real[1][i] += v;
+    }
+  }
+  writeWav(join(ASSETS, rel), real, 1.05);
   console.log(`wrote assets/${rel} (${laneHits} fuse clicks, ${n} rattle sounds from ${sim.hits.length} domino hits)`);
   return rel;
 }
