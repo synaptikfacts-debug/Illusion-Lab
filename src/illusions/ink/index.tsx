@@ -10,7 +10,7 @@ type P = z.output<typeof inkSchema>;
 
 function Story({ params, tl, offset }: { params: P; tl: Timeline; offset: number }) {
   const frame = useCurrentFrame() + offset;
-  return <InkScene t={frame / tl.fps} dpr={params.dpr} />;
+  return <InkScene t={frame / tl.fps + params.t0} dpr={params.dpr} />;
 }
 
 /** "Ink and Water": glowing inks drop into dark water, bloom, marble in the currents, wind into one vortex, settle. */

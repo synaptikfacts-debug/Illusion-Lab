@@ -42,7 +42,7 @@ const Contents: React.FC<{ t: number; dpr: number }> = ({ t, dpr }) => {
         uT: { value: 0 },
         uDrop: { value: ISTORY.drops.map((d) => new THREE.Vector4(d[0], d[1], d[2], d[3])) },
         uCol: { value: ISTORY.drops.map((d) => new THREE.Vector3(...(ISTORY.colours[d[4]] as [number, number, number]))) },
-        uVortT: { value: [...ISTORY.vortex] },
+        uVortT: { value: [...ISTORY.vortex, ...ISTORY.vortex2] },
         uView: { value: new THREE.Vector2(1, 1) },
         uZoom: { value: 1 },
         uAng: { value: 0 },

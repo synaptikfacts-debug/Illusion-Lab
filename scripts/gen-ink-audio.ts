@@ -14,13 +14,14 @@ export function generateInkAudio(reel: Reel): string {
   const total = tl.total / tl.fps;
   const out = stereo(total);
   const r = rng(reel.seed, "ink-sfx");
+  const T0 = Number((reel.illusion.props as { t0?: number }).t0 ?? 0); // story time at the first frame
   // deep water ambience: low-passed noise, level follows the motion
   const lpL = new Biquad(), lpR = new Biquad();
   lpL.set("lp", 260, 0.6); lpR.set("lp", 260, 0.6);
   let e = 0;
   for (let i = 0; i < out[0].length; i++) {
     const t = i / SR;
-    e += (energy(t) - e) * 0.0003;
+    e += (energy(t + T0) - e) * 0.0003;
     out[0][i] += lpL.run(r() * 2 - 1) * e * 0.05;
     out[1][i] += lpR.run(r() * 2 - 1) * e * 0.05;
   }
@@ -34,16 +35,14 @@ export function generateInkAudio(reel: Reel): string {
     });
   };
   for (const d of ISTORY.drops) {
-    if (d[2] < 0.4) continue; // the opening burst gets one plip (the hook), never a cluster
+    if (d[2] - T0 < 0.4) continue; // only drops that land during the reel (never a cluster at the start)
     const size = d[3];
-    plip(d[2], 520 + (0.3 - size) * 1800 + r() * 60, 0.22, 0.5 + d[0] * 0.8);
+    plip(d[2] - T0, 520 + (0.3 - size) * 1800 + r() * 60, 0.22, 0.5 + d[0] * 0.8);
   }
-  plip(0.02, 560, 0.2, 0.5); // the hook
-  // the vortex: a slow airy swirl
+  // the whirlpools: a slow airy swirl that follows the vortex strength (already turning at the first frame)
   const bp = new Biquad();
-  const [v0, , , v3] = ISTORY.vortex;
-  addWrapped(out, v0, v3 - v0, 0.5, (t, k) => {
-    const s = vortexAt(v0 + t);
+  addWrapped(out, 0, total - 0.05, 0.5, (t, k) => {
+    const s = vortexAt(t + T0) * Math.min(1, t / 0.4);
     if (k % 64 === 0) bp.set("bp", 380 + 500 * s, 1.8);
     return bp.run(r() * 2 - 1) * s * 0.08 * (0.85 + 0.15 * Math.sin(2 * Math.PI * 0.4 * t));
   });
