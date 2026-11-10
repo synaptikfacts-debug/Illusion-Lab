@@ -23,6 +23,19 @@ export const ISTORY = {
     [0.32, -0.2, 29.0, 0.2, 2],
     [-0.1, -0.6, 31.5, 0.18, 3],
     [0.15, 0.7, 34.0, 0.16, 5],
+    // more drops (owner, Nov 10: the reel starts at the drop effect, "add more drops")
+    [-0.05, 0, 27.6, 0.190, 5],
+    [0.3, 0.55, 30.2, 0.185, 1],
+    [-0.32, -0.3, 32.7, 0.180, 4],
+    [0.1, -0.35, 36, 0.175, 0],
+    [-0.25, 0.6, 38, 0.170, 2],
+    [0.3, 0.2, 40.5, 0.190, 3],
+    [-0.05, 0.3, 43, 0.185, 5],
+    [0.25, -0.65, 44.5, 0.180, 1],
+    [-0.3, -0.05, 46, 0.175, 4],
+    [0.05, 0.7, 48, 0.170, 0],
+    [0.28, -0.3, 50, 0.190, 2],
+    [-0.2, 0.35, 51.8, 0.185, 3],
   ] as number[][],
   colours: [
     [0.1, 0.85, 1.0], // cyan
@@ -34,8 +47,8 @@ export const ISTORY = {
     [1.0, 0.1, 0.75], // hot magenta (the last drop, into the eye of the vortex)
   ],
   vortex: [10.0, 15.0, 20.5, 25.5] as [number, number, number, number], // ramp in, hold, ramp out
-  vortex2: [35.0, 39.0, 42.0, 45.0] as [number, number, number, number], // the final whirlpool
-  fade: [44.4, 46.8] as [number, number],
+  vortex2: [35.0, 39.0, 44.0, 49.0] as [number, number, number, number], // the final whirlpool
+  fade: [53.4, 55.8] as [number, number],
 };
 
 const sm = (a: number, b: number, x: number) => {
@@ -49,7 +62,7 @@ export const vortexAt = (t: number) => Math.max(0.75 * sm(-1, -0.2, t) * (1 - sm
 
 /** Camera: slow push-in and a gentle turn with the vortex. */
 export function camAt(t: number) {
-  const zoom = 1.55 - 0.55 * sm(-0.5, 4.5, t) + 0.16 * sm(5, 16, t) - 0.1 * sm(20, 28, t) + 0.12 * sm(33, 41, t) - 0.04 * sm(42, 47, t);
+  const zoom = 1.55 - 0.55 * sm(-0.5, 4.5, t) + 0.16 * sm(5, 16, t) - 0.1 * sm(20, 28, t) + 0.12 * sm(33, 41, t) - 0.04 * sm(42, 47, t) - 0.05 * sm(47, 56, t);
   const ang = 0.012 * t + 0.25 * sm(10, 26, t) + 0.25 * sm(34, 46, t);
   return { zoom, ang };
 }
@@ -63,8 +76,8 @@ export function energy(t: number) {
 
 export const INK_GLSL = /* glsl */ `
 uniform float uT;
-uniform vec4 uDrop[12];   // x, y, landing time, size
-uniform vec3 uCol[12];
+uniform vec4 uDrop[24];   // x, y, landing time, size
+uniform vec3 uCol[24];
 uniform float uVortT[8];
 uniform vec2 uView;      // half extents of the view
 uniform float uZoom, uAng;
@@ -100,16 +113,16 @@ vec2 current(vec2 x, float t) {
 vec2 rot(vec2 p, float a) { float c = cos(a), s = sin(a); return vec2(c * p.x - s * p.y, s * p.x + c * p.y); }
 
 // trace pixel x at time uT back through the flow; q[i] = where its fluid was when drop i landed
-void backtrace(vec2 x, out vec2 q[12]) {
-  for (int i = 0; i < 12; i++) q[i] = vec2(99.0);
+void backtrace(vec2 x, out vec2 q[24]) {
+  for (int i = 0; i < 24; i++) q[i] = vec2(99.0);
   // FIXED time grid (steps at multiples of H): every frame integrates the same path, so nothing jitters or steps
   const float H = 0.2;
   float t0 = -1.8;
   float tau = uT;
   float dt = tau - floor(tau / H - 1e-4) * H; // first partial step lands on the grid
-  for (int k = 0; k < 250; k++) {
+  for (int k = 0; k < 300; k++) {
     if (tau <= t0) break;
-    for (int i = 0; i < 12; i++) {
+    for (int i = 0; i < 24; i++) {
       if (uDrop[i].z <= tau && uDrop[i].z > tau - dt) q[i] = x;
     }
     float s = 0.5 * (vortexS(tau) + vortexS(tau - dt));
@@ -119,13 +132,13 @@ void backtrace(vec2 x, out vec2 q[12]) {
     tau -= dt;
     dt = H;
   }
-  for (int i = 0; i < 12; i++) if (q[i].x > 90.0 && uDrop[i].z <= uT) q[i] = x;
+  for (int i = 0; i < 24; i++) if (q[i].x > 90.0 && uDrop[i].z <= uT) q[i] = x;
 }
 
 // water surface ripples from each drop (height), for refraction + soft highlights
 float ripples(vec2 p) {
   float h = 0.0;
-  for (int i = 0; i < 12; i++) {
+  for (int i = 0; i < 24; i++) {
     float a = uT - uDrop[i].z;
     if (a < 0.0 || a > 6.0) continue;
     float r = length(p - uDrop[i].xy), f = r - 0.32 * a;
@@ -136,10 +149,10 @@ float ripples(vec2 p) {
 
 // ink density + colour (albedo) at a point of the water
 float inkField(vec2 ps, out vec3 alb) {
-  vec2 q[12];
+  vec2 q[24];
   backtrace(ps, q);
   vec3 hsum = vec3(0.0); float wsum = 0.0, D = 0.0;
-  for (int i = 0; i < 12; i++) {
+  for (int i = 0; i < 24; i++) {
     float a = uT - uDrop[i].z;
     if (a < 0.0) continue;
     vec2 d = q[i] - uDrop[i].xy;
