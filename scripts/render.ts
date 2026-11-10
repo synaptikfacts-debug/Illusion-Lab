@@ -21,6 +21,7 @@ import { generateGaltonAudio } from "./gen-galton-audio";
 import { generateOrbAudio } from "./gen-orb-audio";
 import { generateRingsAudio } from "./gen-rings-audio";
 import { generatePendulumAudio } from "./gen-pendulum-audio";
+import { generateFerroAudio } from "./gen-ferro-audio";
 import { generateMusic } from "./gen-music";
 import { loopDiff, normaliseLoudness } from "./lib/checks";
 import { run } from "./lib/ffmpeg";
@@ -97,6 +98,7 @@ export async function renderReel(id: string, opts: { serveUrl?: string; draft?: 
   if (usesGenerated && reel.illusion.type === "orbs") generateOrbAudio(reel);
   if (usesGenerated && reel.illusion.type === "rings") generateRingsAudio(reel);
   if (usesGenerated && reel.illusion.type === "pendulum") generatePendulumAudio(reel);
+  if (usesGenerated && reel.illusion.type === "ferro") generateFerroAudio(reel);
   if (reel.audio.musicGen) generateMusic(reel);
   const missing = assetPaths(reel).filter((p) => !existsSync(p));
   if (missing.length) throw new Error(`Missing assets:\n  ${missing.join("\n  ")}`);

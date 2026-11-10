@@ -11,6 +11,7 @@ import { generateGaltonAudio } from "./gen-galton-audio";
 import { generateOrbAudio } from "./gen-orb-audio";
 import { generateRingsAudio } from "./gen-rings-audio";
 import { generatePendulumAudio } from "./gen-pendulum-audio";
+import { generateFerroAudio } from "./gen-ferro-audio";
 import { loadReel } from "./lib/reels";
 
 const id = process.argv[2];
@@ -29,5 +30,6 @@ if (reel.illusion.type === "galton") generateGaltonAudio(reel);
 if (reel.illusion.type === "orbs") generateOrbAudio(reel);
 if (reel.illusion.type === "rings") generateRingsAudio(reel);
 if (reel.illusion.type === "pendulum") generatePendulumAudio(reel);
+if (reel.illusion.type === "ferro") generateFerroAudio(reel);
 if (reel.illusion.type === "bounceField") generateBounceAudio(reel);
 if (reel.audio.musicGen) generateMusic(reel);
