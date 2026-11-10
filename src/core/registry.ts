@@ -10,6 +10,7 @@ import { orbs, orbsContinue } from "../illusions/orbs";
 import { rings, ringsContinue } from "../illusions/rings";
 import { pendulum, pendulumContinue } from "../illusions/pendulum";
 import { ferro, ferroContinue } from "../illusions/ferro";
+import { ink, inkContinue } from "../illusions/ink";
 import { sand, sandContinue } from "../illusions/sand";
 import { pinWall, pinWallContinue } from "../illusions/pinWall";
 import { rodStory, rodStoryContinue } from "../illusions/rodStory";
@@ -36,6 +37,7 @@ export const ILLUSIONS: Record<string, EffectDef> = {
   rings,
   pendulum,
   ferro,
+  ink,
 };
 
 export const TRANSFORMS: Record<string, EffectDef> = {
@@ -54,6 +56,7 @@ export const TRANSFORMS: Record<string, EffectDef> = {
   ringsContinue,
   pendulumContinue,
   ferroContinue,
+  inkContinue,
 };
 
 export function getEffect(kind: "illusion" | "transform", type: string): EffectDef {

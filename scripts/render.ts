@@ -22,6 +22,7 @@ import { generateOrbAudio } from "./gen-orb-audio";
 import { generateRingsAudio } from "./gen-rings-audio";
 import { generatePendulumAudio } from "./gen-pendulum-audio";
 import { generateFerroAudio } from "./gen-ferro-audio";
+import { generateInkAudio } from "./gen-ink-audio";
 import { generateMusic } from "./gen-music";
 import { loopDiff, normaliseLoudness } from "./lib/checks";
 import { run } from "./lib/ffmpeg";
@@ -99,6 +100,7 @@ export async function renderReel(id: string, opts: { serveUrl?: string; draft?: 
   if (usesGenerated && reel.illusion.type === "rings") generateRingsAudio(reel);
   if (usesGenerated && reel.illusion.type === "pendulum") generatePendulumAudio(reel);
   if (usesGenerated && reel.illusion.type === "ferro") generateFerroAudio(reel);
+  if (usesGenerated && reel.illusion.type === "ink") generateInkAudio(reel);
   if (reel.audio.musicGen) generateMusic(reel);
   const missing = assetPaths(reel).filter((p) => !existsSync(p));
   if (missing.length) throw new Error(`Missing assets:\n  ${missing.join("\n  ")}`);
@@ -184,7 +186,7 @@ export async function renderReel(id: string, opts: { serveUrl?: string; draft?: 
     const out = join(pub, `${spec.filePrefix}_${id}.mp4`);
     const gop = String(spec.fps * 2);
     // fit under the delivery cap (MiB) with 8% headroom for container + VBR overshoot
-    const capKbps = Math.floor(((DELIVERY_MAX_MIB * 8 * 1048576) / 1000 / (composition.durationInFrames / reel.fps)) * 0.92) - spec.audioKbps;
+    const capKbps = Math.floor(((DELIVERY_MAX_MIB * 8 * 1048576) / 1000 / (composition.durationInFrames / reel.fps)) * 0.8) - spec.audioKbps;
     const vKbps = Math.min(spec.videoKbps, capKbps), maxKbps = Math.min(spec.maxrateKbps, Math.round(capKbps * 1.25));
     await step(`export ${spec.label} ${spec.width}x${spec.height}`, () =>
       run("ffmpeg", [
