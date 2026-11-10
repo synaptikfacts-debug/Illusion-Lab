@@ -20,14 +20,15 @@ Never reproduce its specific setup, layout, camera, colours or effect. Before bu
 "Reference does X. Ours does Y instead" and check Y is clearly different. Reel 0002 (bounce orbs) broke this rule
 and is archived in reels/archive/.
 
-## RULE: sound (owner, Nov 9 2026)
-- EVERY version has sound effects synced to the motion (ticks, whooshes, impacts, textures). Never silent.
-- NO music on Instagram, TikTok, Facebook or X: the owner adds a trending track in the app. SFX must not be tonal
-  melodies that would clash with that track.
-- YouTube ONLY: SFX + a CALM, satisfying background track made in-house from real sampled instruments (felt piano,
-  soft strings, harp; scripts/gen-music.ts), synced to the reel's big moment. Never synth grooves (owner: "cringe, AI slop").
-- SFX style: calm and satisfying (soft rounded taps, dark air, gentle settles), never harsh ticks or synth risers.
-- The pipeline does this automatically: `audio.music` / `audio.musicGen` go only into SHORT_ (platforms.ts `music: true`).
+## RULE: sound (owner, Nov 9 2026; updated Nov 10 2026)
+- EVERY version has sound effects synced to the motion. Never silent.
+- MUSIC ON EVERY PLATFORM (owner, Nov 10: the 0004 YouTube mix "was really good"): YouTube, Instagram, TikTok,
+  Facebook and X all get the same SFX + in-house story score (platforms.ts `music: true` everywhere). The old
+  "no music on IG/TT" rule is replaced.
+- Music: CALM, satisfying, real sampled instruments (felt piano, strings, harp, pizzicato, glockenspiel), written to
+  the story beats and resolving on the ending (scripts/gen-music-story.ts style). Never synth grooves ("cringe, AI slop").
+- SFX style: calm and satisfying, from the simulation's own events, real recorded samples.
+- The piano is CC BY 3.0: the render adds the credit line to every caption that carries music.
 
 ## RULE: quality bar for every reel (owner, Nov 10 2026: "no ending, not HD, AI slop, cheap sounds")
 - STORY WITH AN ENDING: hook on frame 0 -> build -> payoff -> a clear, final ending moment (something settles, closes,

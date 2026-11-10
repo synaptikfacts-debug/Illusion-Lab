@@ -13,6 +13,7 @@ import { generateInhouseAudio } from "./gen-audio";
 import { generateBounceAudio } from "./gen-bounce-audio";
 import { generatePinAudio } from "./gen-pin-audio";
 import { generateRodAudio } from "./gen-rod-audio";
+import { generateDominoAudio } from "./gen-domino-audio";
 import { generateMusic } from "./gen-music";
 import { loopDiff, normaliseLoudness } from "./lib/checks";
 import { run } from "./lib/ffmpeg";
@@ -23,6 +24,7 @@ import { assetPaths, loadReel } from "./lib/reels";
 // GPU WebGL via ANGLE; "error" hides three.js deprecation chatter from the browser console.
 // CC BY 3.0 requires this credit wherever the in-house music (sampled piano) is published.
 const MUSIC_CREDIT = "Music: Illusion Lab. Piano samples: Salamander Grand Piano by Alexander Holm (CC BY 3.0).";
+const MUSIC_CREDIT_SHORT = "Piano: Salamander Grand, A. Holm, CC BY 3.0"; // X (280 chars)
 
 const BROWSER = { chromiumOptions: { gl: "angle" as const }, logLevel: "error" as const };
 
@@ -79,6 +81,7 @@ export async function renderReel(id: string, opts: { serveUrl?: string; draft?: 
   if (usesGenerated && reel.illusion.type === "bounceField") generateBounceAudio(reel);
   if (usesGenerated && reel.illusion.type === "pinWall") generatePinAudio(reel);
   if (usesGenerated && reel.illusion.type === "rodStory") generateRodAudio(reel);
+  if (usesGenerated && reel.illusion.type === "dominoStory") generateDominoAudio(reel);
   if (reel.audio.musicGen) generateMusic(reel);
   const missing = assetPaths(reel).filter((p) => !existsSync(p));
   if (missing.length) throw new Error(`Missing assets:\n  ${missing.join("\n  ")}`);
@@ -186,14 +189,14 @@ export async function renderReel(id: string, opts: { serveUrl?: string; draft?: 
         `PLATFORM: ${spec.label}`,
         `VIDEO: ${spec.filePrefix}_${id}.mp4 (${mb.toFixed(1)} MB)`,
         `COVER: cover.jpg`,
-        `SOUND: ${spec.music && hasMusic ? "SFX + in-house music" : "SFX only - add your trending music in the app"}`,
+        `SOUND: ${spec.music && hasMusic ? "SFX + in-house music" : "SFX only"}`,
         ...(spec.titleMax !== null ? ["", "TITLE:", text.title ?? ""] : []),
         "",
         spec.titleMax !== null ? "DESCRIPTION:" : "CAPTION:",
-        spec.music && reel.audio.musicGen
+        spec.music && hasMusic
           ? fullCaption(`${text.caption.trim()}
 
-${MUSIC_CREDIT}`, text.hashtags)
+${pid === "x" ? MUSIC_CREDIT_SHORT : MUSIC_CREDIT}`, text.hashtags)
           : fullCaption(text.caption, text.hashtags),
         "",
       ].join("\n"),
