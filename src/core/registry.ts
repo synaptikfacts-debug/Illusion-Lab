@@ -5,6 +5,7 @@ import { expandingRings } from "../illusions/expandingRings";
 import { faceStory, faceStoryContinue } from "../illusions/faceStory";
 import { glassFace, glassFaceContinue } from "../illusions/glassFace";
 import { liquid, liquidContinue } from "../illusions/liquid";
+import { sand, sandContinue } from "../illusions/sand";
 import { pinWall, pinWallContinue } from "../illusions/pinWall";
 import { rodStory, rodStoryContinue } from "../illusions/rodStory";
 import { livingAfterimage } from "../illusions/livingAfterimage";
@@ -24,6 +25,7 @@ export const ILLUSIONS: Record<string, EffectDef> = {
   faceStory,
   glassFace,
   liquid,
+  sand,
 };
 
 export const TRANSFORMS: Record<string, EffectDef> = {
@@ -36,6 +38,7 @@ export const TRANSFORMS: Record<string, EffectDef> = {
   faceStoryContinue,
   glassFaceContinue,
   liquidContinue,
+  sandContinue,
 };
 
 export function getEffect(kind: "illusion" | "transform", type: string): EffectDef {

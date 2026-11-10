@@ -69,3 +69,8 @@ What attracts viewers is pure, satisfying, abstract motion - e.g. the 0004 momen
 through thousands of rods (screenshot reference). Build reels from mesmerizing physical phenomena: ripples, rings,
 interference, vortexes, spirals, waves, cascades, blooms - one after another, each more striking, with the quality bar
 (hook, physical look, ending, motion-driven sound) and the every-reel-different rule.
+
+## RULE: PREVIEW FIRST, ALWAYS (owner, Nov 10 2026)
+Every new reel (and every big change): send a preview first - a key-frame sheet + a half-size motion clip WITH sound
+(`npm run render -- <id> --draft`) - and WAIT for the owner to approve or reject. No full render, no exports, no
+thumbnails, no upload texts until the owner says yes.
