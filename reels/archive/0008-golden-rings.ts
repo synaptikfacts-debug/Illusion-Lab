@@ -1,4 +1,5 @@
-import { defineReel } from "../src/core/define";
+// ARCHIVED (Nov 10 2026): owner did not like it at all. Replaced by 0008-pendulum-helix (owner picked concept 1 of 6).
+import { defineReel } from "../../src/core/define";
 
 // Abstract only, every reel different. Last three: rainbow orbs / black mirror / felt taps; neon liquid; chrome rods.
 // This one: a kinetic sculpture of 44 polished GOLD rings in a deep emerald void, soft airy swishes, no music.

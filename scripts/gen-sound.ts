@@ -10,6 +10,7 @@ import { generateSandAudio } from "./gen-sand-audio";
 import { generateGaltonAudio } from "./gen-galton-audio";
 import { generateOrbAudio } from "./gen-orb-audio";
 import { generateRingsAudio } from "./gen-rings-audio";
+import { generatePendulumAudio } from "./gen-pendulum-audio";
 import { loadReel } from "./lib/reels";
 
 const id = process.argv[2];
@@ -27,5 +28,6 @@ if (reel.illusion.type === "sand") generateSandAudio(reel);
 if (reel.illusion.type === "galton") generateGaltonAudio(reel);
 if (reel.illusion.type === "orbs") generateOrbAudio(reel);
 if (reel.illusion.type === "rings") generateRingsAudio(reel);
+if (reel.illusion.type === "pendulum") generatePendulumAudio(reel);
 if (reel.illusion.type === "bounceField") generateBounceAudio(reel);
 if (reel.audio.musicGen) generateMusic(reel);

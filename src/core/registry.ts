@@ -8,6 +8,7 @@ import { galton, galtonContinue } from "../illusions/galton";
 import { liquid, liquidContinue } from "../illusions/liquid";
 import { orbs, orbsContinue } from "../illusions/orbs";
 import { rings, ringsContinue } from "../illusions/rings";
+import { pendulum, pendulumContinue } from "../illusions/pendulum";
 import { sand, sandContinue } from "../illusions/sand";
 import { pinWall, pinWallContinue } from "../illusions/pinWall";
 import { rodStory, rodStoryContinue } from "../illusions/rodStory";
@@ -32,6 +33,7 @@ export const ILLUSIONS: Record<string, EffectDef> = {
   galton,
   orbs,
   rings,
+  pendulum,
 };
 
 export const TRANSFORMS: Record<string, EffectDef> = {
@@ -48,6 +50,7 @@ export const TRANSFORMS: Record<string, EffectDef> = {
   galtonContinue,
   orbsContinue,
   ringsContinue,
+  pendulumContinue,
 };
 
 export function getEffect(kind: "illusion" | "transform", type: string): EffectDef {
