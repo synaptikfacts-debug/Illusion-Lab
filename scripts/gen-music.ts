@@ -15,6 +15,7 @@ import { generateDominoMusic } from "./gen-music-domino";
 import { generateFaceMusic } from "./gen-music-face";
 import { generateLiquidMusic } from "./gen-music-liquid";
 import { generateSandMusic } from "./gen-music-sand";
+import { generateGaltonMusic } from "./gen-music-galton";
 
 // key of F: Fmaj7, Am7, Dm9, Bbmaj9 ... ending on Csus4, which resolves into Fmaj7 at the loop point
 const CHORDS: { root: number; tones: number[] }[] = [
@@ -33,6 +34,7 @@ export function generateMusic(reel: Reel): string {
   if (cfg.style === "faceStory") return generateFaceMusic(reel);
   if (cfg.style === "liquid") return generateLiquidMusic(reel);
   if (cfg.style === "sand") return generateSandMusic(reel);
+  if (cfg.style === "galton") return generateGaltonMusic(reel);
   const tl = timeline(reel);
   const total = tl.total / tl.fps;
   const bpm = cfg.bpm > 90 ? 72 : cfg.bpm; // calm by default

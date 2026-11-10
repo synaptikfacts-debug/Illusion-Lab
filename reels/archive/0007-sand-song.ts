@@ -1,4 +1,5 @@
-import { defineReel } from "../src/core/define";
+// ARCHIVED (Nov 10 2026): rejected at preview ("NO... I want something as satisfying as possible").
+import { defineReel } from "../../src/core/define";
 
 // Abstract only, every reel different. Last two: 0006 mirror-black neon liquid (pink/violet, harp/marimba),
 // 0004 chrome rods (dark studio, teal/amber, piano). This one: bright warm daylight, coloured SAND (gold, rust,
