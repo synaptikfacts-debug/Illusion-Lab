@@ -9,10 +9,11 @@ export const OP = {
   discRadius: 3.0,
   ballRadius: 0.034,
   height: 1.15,
-  L: 36, // phase loop
-  base: 24, // bounces per loop (even)
+  // owner: open on the calm look of the old 18 s mark - same phase field (w = 0.345), evolving slowly to the sync
+  L: 125, // phase cycle (not looped)
+  base: 125 / 1.5, // one bounce every 1.5 s
   spread: 2.6,
-  start: 0.3, // video starts at p = start * L
+  start: 0.8, // video starts at p = start * L
   duration: 30,
   settle: [25.6, 28.8] as [number, number], // video seconds: bounces die down
   fade: [27.6, 29.8] as [number, number],

@@ -18,7 +18,7 @@ export function generateOrbAudio(reel: Reel): string {
   const R = 8;
   const tap = (at: number, f: number, g: number, pan: number) => {
     const lp = new Biquad().set("lp", 900, 0.7);
-    addWrapped(out, at, 0.09, pan, (t) => (Math.sin(2 * Math.PI * f * t) * 0.8 + lp.run(r() * 2 - 1) * 0.5) * Math.exp(-t * 45) * Math.min(1, t / 0.003) * g);
+    addWrapped(out, at, 0.08, pan, (t) => (Math.sin(2 * Math.PI * f * t) * 0.8 + lp.run(r() * 2 - 1) * 0.5) * Math.exp(-t * 60) * Math.min(1, t / 0.003) * g);
   };
   const bins = new Map<string, { t: number; n: number; e: number; ring: number; x: number }>();
   for (const o of orbLayout(reel.seed)) {
@@ -30,10 +30,13 @@ export function generateOrbAudio(reel: Reel): string {
       bins.set(key, b);
     }
   }
+  // owner: taps overlapped and blurred into one sound - every tap is now a separate tick: at most one tap every
+  // 0.09 s overall (the strongest ring wins), and one per ring every 0.25 s
   const last = new Array(R).fill(-1);
-  let n = 0;
+  let n = 0, lastAny = -1;
   for (const b of [...bins.values()].sort((a, c) => a.t - c.t)) {
-    if (b.t - last[b.ring] < 0.2) continue;
+    if (b.t - last[b.ring] < 0.25 || b.t - lastAny < 0.09) continue;
+    lastAny = b.t;
     const e = b.e / b.n;
     if (e < 0.04) continue;
     last[b.ring] = b.t;
@@ -41,7 +44,7 @@ export function generateOrbAudio(reel: Reel): string {
     n++;
   }
   // climax: a soft cluster of taps across the disc
-  for (let k = 0; k < 6; k++) tap(SYNC_AT + k * 0.018 + r() * 0.01, 170 + r() * 120, 0.2, 0.2 + k * 0.12);
+  tap(SYNC_AT, 200, 0.26, 0.5); // the unified landing: one clear tap
   reverb(out, { room: 0.6, damp: 0.6, wet: 0.12, loop: false });
   const rel = `generated/${reel.id}-sfx.wav`;
   writeWav(join(ASSETS, rel), out, 1.0);
