@@ -20,14 +20,14 @@ export default defineReel({
   transform: { type: "orbsContinue", props: o },
   audio: {
     lufs: -16,
-    // owner: one simple calm sound (bubbles) - no music on this reel
+    // owner picked option C: soft felt taps only, no music
     sfx: [{ at: 0, file: "generated/0007-orb-waves-sfx.wav", volume: 1 }],
   },
   cover: { at: 14.0 },
   publish: {
-    youtube: { title: "4600 orbs, each with its own bounce", caption: "Every orb bounces at its own rhythm. Watch them all land together.", hashtags: ["#shorts", "#satisfying", "#oddlysatisfying"] },
+    youtube: { title: "4600 orbs, each with its own bounce", caption: "Every orb bounces at its own rhythm. Watch them all land together, then rest.", hashtags: ["#shorts", "#satisfying", "#oddlysatisfying"] },
     instagram: { caption: "4600 orbs, each with its own bounce. Wait for them to land together.", hashtags: ["#reels", "#oddlysatisfying", "#satisfying", "#3danimation", "#asmr"] },
-    facebook: { caption: "4600 orbs, each with its own bounce.", hashtags: ["#reels", "#satisfying"] },
+    facebook: { caption: "4600 orbs, each with its own bounce. Wait for them to land together.", hashtags: ["#reels", "#satisfying"] },
     tiktok: { caption: "wait for them to land together", hashtags: ["#fyp", "#oddlysatisfying", "#satisfying", "#3danimation", "#asmr"] },
     x: { caption: "4600 orbs, each with its own bounce.", hashtags: ["#satisfying"] },
   },
