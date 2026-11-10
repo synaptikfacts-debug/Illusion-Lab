@@ -1,4 +1,5 @@
-import { defineReel } from "../src/core/define";
+// PARKED (Nov 10 2026): owner "leave it for now" after v3. Liquid Obsidian (0006) is the benchmark.
+import { defineReel } from "../../src/core/define";
 
 // Owner's pick (concept 1 of 6), dark studio for a calm feel. Every reel different: last = rainbow orbs on a black
 // mirror; this = 144 glossy pendulum spheres on fine threads in 4 tiers, moonlight-blue -> teal -> amber, soft ticks.
