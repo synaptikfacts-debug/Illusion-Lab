@@ -74,3 +74,8 @@ interference, vortexes, spirals, waves, cascades, blooms - one after another, ea
 Every new reel (and every big change): send a preview first - a key-frame sheet + a half-size motion clip WITH sound
 (`npm run render -- <id> --draft`) - and WAIT for the owner to approve or reject. No full render, no exports, no
 thumbnails, no upload texts until the owner says yes.
+
+## CLARIFIED (owner, Nov 10 2026): what "like this reference" means
+Keep the reference's CORE IDEA and mechanic (e.g. thousands of glossy orbs bouncing at their own rhythms, forming
+shapes, a click per bounce). Make only the look ours: colours, plate/stage, camera, hook and ending. Do NOT swap in
+a different mechanic (Galton board, sand, liquid were all rejected as "nothing to do with the one I sent").

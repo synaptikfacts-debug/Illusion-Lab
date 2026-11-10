@@ -18,6 +18,7 @@ import { generateFaceAudio } from "./gen-face-audio";
 import { generateLiquidAudio } from "./gen-liquid-audio";
 import { generateSandAudio } from "./gen-sand-audio";
 import { generateGaltonAudio } from "./gen-galton-audio";
+import { generateOrbAudio } from "./gen-orb-audio";
 import { generateMusic } from "./gen-music";
 import { loopDiff, normaliseLoudness } from "./lib/checks";
 import { run } from "./lib/ffmpeg";
@@ -91,6 +92,7 @@ export async function renderReel(id: string, opts: { serveUrl?: string; draft?: 
   if (usesGenerated && reel.illusion.type === "liquid") generateLiquidAudio(reel);
   if (usesGenerated && reel.illusion.type === "sand") generateSandAudio(reel);
   if (usesGenerated && reel.illusion.type === "galton") generateGaltonAudio(reel);
+  if (usesGenerated && reel.illusion.type === "orbs") generateOrbAudio(reel);
   if (reel.audio.musicGen) generateMusic(reel);
   const missing = assetPaths(reel).filter((p) => !existsSync(p));
   if (missing.length) throw new Error(`Missing assets:\n  ${missing.join("\n  ")}`);

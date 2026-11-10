@@ -1,4 +1,5 @@
-import { defineReel } from "../src/core/define";
+// ARCHIVED (Nov 10 2026): rejected at preview - "nothing to do with the one I sent" (owner wants the reference orb idea).
+import { defineReel } from "../../src/core/define";
 
 // Reference formula (owner's particlesflow reel): many glossy balls, satisfying physics, a sound on every hit,
 // clean stage, satisfying end. Ours (different mechanic): a Galton board - 3000 candy marbles pour through chrome
