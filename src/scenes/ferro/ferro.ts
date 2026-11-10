@@ -9,7 +9,7 @@
 export const FSTORY = {
   duration: 30,
   /** pulse rings, each emitted from where the magnet is at that moment */
-  pulses: [-0.5, 0.6, 1.6, 2.6, 3.5, 4.4, 5.4, 6.4],
+  pulses: [-0.9, 0.2, 1.3, 2.4, 3.5, 4.6, 5.7, 6.8],
   /** the gliding magnet: travels a figure-eight, then settles in the centre */
   glide: [0, 7.4] as [number, number],
   settle: 8.6,
@@ -27,6 +27,9 @@ const sm = (a: number, b: number, x: number) => {
 
 /** Magnet position on the pool (x, z). */
 export function magAt(t: number): [number, number] {
+  return [0 * t, 0]; // the magnet stays under the centre (calm, ordered)
+}
+export function magAtGlide(t: number): [number, number] {
   const S = FSTORY;
   // eases in over the first 1.5 s (no fast sweep on the first frames), then glides at full speed
   const te = t < 1.5 ? (t * t) / 3 : t - 0.75;
@@ -48,7 +51,7 @@ export function controls(t: number) {
     rot: 0.05 * t + 0.25 * sm(S.bloom[0], 26, t) * (t - S.bloom[0]) * 0.12, // lattice turns slowly, more in the bloom
     melt: t - S.off, // seconds since the magnet switched off (negative before)
     mag: magAt(t),
-    magOn: 1 - sm(S.settle - 0.6, S.settle + 0.8, t), // the travelling cluster hands over to the growing field
+    magOn: 0, // no travelling cluster (owner: too tall and confusing)
     pulses: S.pulses.flatMap((p) => { const [x, z] = magAt(Math.max(0, p)); return [x, z, p]; }),
   };
 }
@@ -57,7 +60,6 @@ export function controls(t: number) {
 export function energy(t: number) {
   const k = controls(t);
   let e = 0.25 + 0.45 * k.grow + 0.3 * k.bloom;
-  e += 0.35 * k.magOn;
   for (const p of FSTORY.pulses) { const d = t - p; if (d > 0 && d < 2.5) e += 0.3 * Math.exp(-d * 1.4); }
   return Math.min(1, e) * k.on;
 }
@@ -88,7 +90,7 @@ float envelope(vec2 c) {
     if (d < 0.0 || d > 4.0) continue;
     float rr = length(c - uPulse[i].xy);
     float front = 0.3 + 0.8 * d;
-    e += exp(-pow((rr - front) / 0.2, 2.0)) * exp(-d * 0.5) * 0.85;
+    e += exp(-pow((rr - front) / 0.17, 2.0)) * exp(-d * 0.35) * 1.0;
   }
   // the travelling magnet drags a tall cluster of spikes
   float dm = length(c - uMag);
@@ -102,7 +104,8 @@ float envelope(vec2 c) {
   float petals = 0.5 + 0.5 * cos(6.0 * th - uRot * 2.0);
   e *= mix(1.0, 0.04 + 1.25 * pow(petals, 2.5), uBloom);
   // crown: the centre rises tall
-  e += uCrown * 0.75 * exp(-r * r / 0.12);
+  e = min(e, 1.0);
+  e += uCrown * 0.55 * exp(-r * r / 0.12);
   return e * uOn;
 }
 

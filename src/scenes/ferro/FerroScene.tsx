@@ -14,10 +14,8 @@ import { controls, FERRO_GLSL, FSTORY } from "./ferro";
 /** Camera [t, px, py, pz, lx, ly, lz]: low and close on the spike ring (hook), rise over the growing field,
  *  top-down for the turning bloom, down to grazing for the crown, low for the melt and the calm mirror. */
 const CAM: number[][] = [
-  [0.0, 0.5, 0.62, 1.7, 0, 0.18, 0],
-  [2.5, -0.9, 1.05, 2.2, 0, 0.12, 0],
-  [4.2, 0.7, 1.55, 2.7, 0, 0.08, 0],
-  [6.0, 0.9, 1.8, 3.0, 0, 0.05, 0],
+  [0.0, 0.0, 0.85, 2.5, 0, 0.08, 0],
+  [4.0, 0.7, 1.25, 3.0, 0, 0.05, 0],
   [8.0, -1.6, 1.6, 3.4, 0, 0, 0],
   [12.0, 1.4, 2.4, 3.0, 0, 0, 0],
   [16.0, -1.4, 2.8, 2.8, 0, 0, 0],
@@ -155,7 +153,7 @@ const Contents: React.FC<{ t: number; dpr: number; zoom: number }> = ({ t, dpr, 
   let [cx, cy, cz, lx, ly, lz] = camAt(t);
   {
     const [mx, mz] = controls(t).mag;
-    const w = 1 - Math.min(1, Math.max(0, (t - 6.8) / 2.2)); // chase during the glide, hand over to the keyframes
+    const w = 0; // steady camera (no chase)
     cx += mx * w; lx += mx * w; cz += mz * w; lz += mz * w;
   }
   camera.position.set(lx + (cx - lx) * zoom, ly + (cy - ly) * zoom, lz + (cz - lz) * zoom);
