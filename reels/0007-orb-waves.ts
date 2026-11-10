@@ -19,9 +19,8 @@ export default defineReel({
   illusion: { type: "orbs", props: o },
   transform: { type: "orbsContinue", props: o },
   audio: {
-    musicVolume: 0.5,
     lufs: -16,
-    musicGen: { style: "orbs", bpm: 80, seed: 72 },
+    // owner: one simple calm sound (bubbles) - no music on this reel
     sfx: [{ at: 0, file: "generated/0007-orb-waves-sfx.wav", volume: 1 }],
   },
   cover: { at: 14.0 },
