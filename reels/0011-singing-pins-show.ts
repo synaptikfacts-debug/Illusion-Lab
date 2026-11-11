@@ -31,7 +31,7 @@ export default defineReel({
     musicGen: { style: "pinshow", bpm: 60, seed: 1111 },
     sfx: [{ at: 0, file: "generated/0011-singing-pins-show-sfx.wav", volume: 1 }],
   },
-  cover: { at: 43.5 },
+  cover: { at: 1.5 }, // owner, Nov 11: thumbnail = the opening spiral, never the star
   publish: {
     youtube: { title: "4096 pins draw four pictures", caption: "4096 pins, each moving to its own rhythm. Watch them freeze into a spiral, a star, rings and a mandala. 100% computer-made animation.", hashtags: ["#shorts", "#satisfying", "#asmr"] },
     instagram: { caption: "4096 pins, each with its own rhythm. Wait for what they draw.", hashtags: ["#reels", "#oddlysatisfying", "#asmr", "#3danimation", "#generativeart"] },
