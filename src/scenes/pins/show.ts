@@ -20,13 +20,14 @@ export const SHOW = {
   ripple: 2.6,
   /** pictures in order, each segment's length (s) and its tip colours (low -> high) */
   segments: [
-    { img: "rings" as ShowImage, L: 12, tips: ["#1c0f66", "#7a2fe0", "#1fc8f0", "#9ff4ff"] },
-    { img: "star" as ShowImage, L: 13, tips: ["#4a0c4c", "#e0257a", "#f59a2a", "#ffd98a"] },
+    // owner, Nov 11 (3): open on the spiral (was at 26 s), the star recoloured (owner did not like the orange/gold)
     { img: "spiral" as ShowImage, L: 13, tips: ["#08304c", "#16b48e", "#4fe6f0", "#b8fff4"] },
+    { img: "star" as ShowImage, L: 13, tips: ["#0b1a6e", "#2f6bff", "#9a5cff", "#ff5cd6"] }, // jewel: sapphire -> violet -> hot orchid
+    { img: "rings" as ShowImage, L: 12, tips: ["#1c0f66", "#7a2fe0", "#1fc8f0", "#9ff4ff"] },
     { img: "flower" as ShowImage, L: 16, tips: ["#2c0e6a", "#b032e8", "#f05cc4", "#ffc2ee"] },
   ],
   /** where in the first segment the reel starts (fraction), so frame 0 is already racing */
-  startAt: 0.16,
+  startAt: 0.2246, // frame 0 = the old 26 s moment: the wall racing into the spiral
   /** after the last picture forms: hold, then melt to a flat mirror */
   hold: 2,
   melt: 5.5,
