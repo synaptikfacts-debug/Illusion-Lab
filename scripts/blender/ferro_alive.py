@@ -67,6 +67,7 @@ for o in scene.objects:
 
 # --- BRILLIANT colour (owner, Nov 11: "rich, colourful, brilliant"): the ferrofluid is a black mirror, so its colour is
 # what it reflects - a ring of big neon panels, hidden from the camera, mirrored in every spike and droplet ---
+NEON_EM = []
 NEON = [
     ((0.0, 1.0, 0.95), 0), ((1.0, 0.05, 0.65), 1), ((0.55, 0.15, 1.0), 2), ((0.1, 0.35, 1.0), 3),
     ((1.0, 0.2, 0.95), 4), ((0.0, 0.8, 1.0), 5), ((0.75, 0.0, 1.0), 6), ((1.0, 0.1, 0.4), 7),
@@ -88,6 +89,7 @@ for col, i in NEON:
     out_ = pn_.new("ShaderNodeOutputMaterial")
     pm_.node_tree.links.new(em_.outputs["Emission"], out_.inputs["Surface"])
     pnl.data.materials.append(pm_)
+    NEON_EM.append(em_)
     pnl.visible_camera = False
     pnl.light_linking.receiver_collection = lit  # glow on the ferrofluid only, never on the mirror floor
 # a glowing, saturated backdrop instead of a dim one
@@ -116,6 +118,30 @@ for i in range(34):
     bpy.ops.object.shade_smooth()
     lit.objects.link(d)
     DROPS.append({"o": d, "p0": np.array([r0 * math.cos(a), r0 * math.sin(a)]), "rad": rad, "wake": rng.uniform(0.5, 24.0), "pull": rng.uniform(0.6, 1.4)})
+
+
+JUMP = []
+for i in range(26):
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, radius=1.0)
+    jd = bpy.context.active_object
+    jd.data.materials.append(ferro)
+    bpy.ops.object.shade_smooth()
+    lit.objects.link(jd)
+    jd.scale = (0, 0, 0)
+    JUMP.append(jd)
+
+
+def place_jumpers(fr):
+    js = fr.get("jumpers", [])
+    for i, jd in enumerate(JUMP):
+        if i < len(js):
+            x, y, z, rad, st, yaw, pitch = js[i]
+            jd.location = (x, y, z)
+            jd.rotation_euler = (0, -pitch, yaw)
+            jd.scale = (rad * st, rad / math.sqrt(st), rad / math.sqrt(st))
+        else:
+            jd.scale = (0, 0, 0)
+            jd.location = (0, 0, -1)
 
 
 def place_drops(fr, t):
@@ -177,8 +203,11 @@ def heights(fr, t):
     amp = np.full(X.shape, fr["base"])
     mx = (bl[:, 0] * bl[:, 2]).sum() / bl[:, 2].sum()
     my = (bl[:, 1] * bl[:, 2]).sum() / bl[:, 2].sum()
-    for idx, radius, ra in fr["rings"]:
-        if idx < 0 or idx >= len(bl):
+    for ring in fr["rings"]:
+        idx, radius, ra = ring[0], ring[1], ring[2]
+        if len(ring) == 5:  # a splash ring around a point (a droplet landing)
+            rr = np.hypot(cx + sx - ring[3], cy + sy - ring[4])
+        elif idx < 0 or idx >= len(bl):
             rr = np.hypot(cx + sx - mx, cy + sy - my)
         else:
             rr = np.hypot(cx + sx - bl[int(idx), 0], cy + sy - bl[int(idx), 1])
@@ -219,6 +248,9 @@ def frame(f):
     fluid.data.vertices.foreach_set("co", c.astype(np.float32).ravel())
     fluid.data.update()
     place_drops(fr, t)
+    place_jumpers(fr)
+    for em_ in NEON_EM:  # the creature glows a little on every heartbeat
+        em_.inputs["Strength"].default_value = 12.0 * fr.get("glow", 1.0)
     for name, (o, p0) in LIGHTS.items():
         a = 0.35 * math.sin(2 * math.pi * t / 14 + len(name)) + (0.25 * t / 30 if name == "Top" else 0)
         p = mathutils.Matrix.Rotation(a, 4, "Z") @ p0

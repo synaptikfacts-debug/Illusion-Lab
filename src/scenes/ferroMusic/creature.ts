@@ -78,6 +78,8 @@ export interface LifeFrame {
   wave: number[]; // [dirx, diry, k, phase, amp]
   crown: number;
   lean: number[]; // [lx, ly]
+  jumpers: number[][]; // [x, y, z, radius, stretch, yaw, pitch] of every droplet in the air (or resting on the mirror)
+  glow: number; // neon brightness: the creature glows a little on every heartbeat
 }
 
 /** everything the renderer needs for the fluid at time t */
@@ -100,14 +102,70 @@ export function lifeAt(t: number): LifeFrame {
   // the crawl ripple runs along the body in the direction of travel
   const crawling = sm(LIFE.crawl[0] - 0.5, LIFE.crawl[0] + 0.5, t) * (1 - sm(LIFE.crawl[1] - 0.6, LIFE.crawl[1] + 0.4, t));
   const lean = [0.25 * sm(LIFE.reach, LIFE.reach + 1, t) * (1 - sm(LIFE.split - 1, LIFE.split, t)), 0];
+  const J = jumpersAt(t);
+  for (const r of J.rings) rings.push(r);
+  let glow = 1;
+  for (const b of beats()) { const age = t - b.t; if (age > 0 && age < 1.2) glow += 0.32 * b.g * Math.exp(-age * 4.5) * Math.min(1, age / 0.04); }
   return {
     blobs: bs.map((b) => [b.x, b.y, b.R]),
     rings,
+    jumpers: J.drops,
+    glow,
     base: (0.0032 + 0.004 * build) * alive + 0.0004,
     wave: [1, 0, 330, -TAU * 1.4 * t, 0.006 * crawling],
     crown,
     lean,
   };
+}
+
+// --- details that keep people watching (owner, Nov 11: "add details that make everyone stay") ---
+// Droplets LEAP out of the creature now and then (a spike flicks a bead up, it arcs in slow motion and drops back in
+// with a tiny splash ring), and at the crown a burst of beads sprays out onto the mirror; during the exhale the
+// creature slowly pulls them all back home.
+const G = 1.1; // slow-motion gravity (m/s^2) so a leap reads clearly
+export interface Leap { t: number; a: number; d: number; up: number; out: number; r: number; home: boolean }
+export function leaps(): Leap[] {
+  const out: Leap[] = [];
+  const small: [number, number][] = [[1.25, 0.6], [4.2, -0.4], [6.1, 2.4], [7.7, 1.2], [8.9, -2.0], [11.6, 2.8], [12.7, -0.9], [13.9, 1.8], [17.4, 0.3], [18.6, -2.4], [19.7, 1.4], [20.9, -1.0], [25.2, 0.9]];
+  small.forEach(([t, a], i) => out.push({ t, a, d: 0.012 + 0.006 * (i % 3), up: 0.3 + 0.05 * (i % 2), out: 0.012 + 0.004 * (i % 2), r: 0.0024 + 0.0006 * (i % 3), home: true }));
+  // the crown burst: beads spray out in all directions and land on the mirror
+  for (let i = 0; i < 12; i++) out.push({ t: LIFE.crown + 0.06 + 0.03 * (i % 4), a: (i / 12) * TAU + 0.2, d: 0.006, up: 0.27 + 0.035 * (i % 3), out: 0.085 + 0.02 * (i % 2), r: 0.0026 + 0.0008 * (i % 3), home: false });
+  return out;
+}
+function centroid(t: number) {
+  const bs = blobs(t);
+  let x = 0, y = 0, w = 0;
+  for (const b of bs) { x += b.x * b.R; y += b.y * b.R; w += b.R; }
+  return { x: x / w, y: y / w };
+}
+export function jumpersAt(t: number): { drops: number[][]; rings: number[][]; landings: { t: number; burst: boolean }[] } {
+  const drops: number[][] = [], rings: number[][] = [], landings: { t: number; burst: boolean }[] = [];
+  for (const L of leaps()) {
+    const c0 = centroid(L.t);
+    const x0 = c0.x + Math.cos(L.a) * L.d, y0 = c0.y + Math.sin(L.a) * L.d, z0 = 0.012;
+    const T = (L.up + Math.sqrt(L.up * L.up + 2 * G * z0)) / G; // flight time until it lands at z = 0
+    landings.push({ t: L.t + T, burst: !L.home });
+    const age = t - L.t;
+    if (age < 0) continue;
+    const vx = Math.cos(L.a) * L.out / T, vy = Math.sin(L.a) * L.out / T;
+    if (age <= T) {
+      const z = z0 + L.up * age - 0.5 * G * age * age;
+      const vz = L.up - G * age;
+      const sp = Math.hypot(vx, vy, vz);
+      drops.push([x0 + vx * age, y0 + vy * age, Math.max(z, 0) + L.r * 0.8, L.r, 1 + 1.2 * Math.min(1, sp / 0.35), Math.atan2(vy, vx), Math.atan2(vz, Math.hypot(vx, vy))]);
+      continue;
+    }
+    const lx = x0 + vx * T, ly = y0 + vy * T, la = age - T;
+    // the splash ring where it lands
+    if (la < 0.9) rings.push([-2, 0.05 * la, (L.home ? 0.0045 : 0.0025) * Math.exp(-la * 3.5), lx, ly]);
+    if (L.home) continue;
+    // burst beads rest on the mirror, wobble a little, then get pulled home in the exhale
+    const pull = sm(LIFE.exhale[0] + 0.3 + 0.1 * (L.a % 1), LIFE.exhale[1] - 0.6, t);
+    const c = centroid(t);
+    const px = lx + (c.x - lx) * pull ** 2, py = ly + (c.y - ly) * pull ** 2;
+    if (pull < 0.97) drops.push([px, py, L.r * 0.55, L.r, 1 + 0.5 * pull * (1 - pull) * 4, Math.atan2(c.y - py, c.x - px), 0]);
+  }
+  return { drops, rings, landings };
 }
 
 /** light colours (no warm tones) */
@@ -136,9 +194,15 @@ export function lifeCam(t: number) {
   const tw = sm(LIFE.crown - 2.5, LIFE.crown + 0.8, t) * (1 - sm(25, 29, t));
   const spread = bs.length > 1 ? Math.hypot(bs[0].x - bs[1].x, bs[0].y - bs[1].y) : 0;
   const yaw = (-12 + 24 * sm(0, LIFE.duration, t)) * (Math.PI / 180);
-  const dist = 0.36 + 1.6 * spread * 0.5 - 0.06 * tw + 0.04 * sm(26, 30, t);
-  const tilt = (56 + 6 * tw) * (Math.PI / 180);
-  return { yaw, dist, tilt, look: [fx, fy, 0.004 + 0.009 * tw] };
+  // two cinematic close-ups: the reaching arm, and the moment the halves merge
+  // (the merge close-up was removed: the fast push over the spike pattern failed the photosensitivity check)
+  const cu1 = sm(2.9, 3.6, t) * (1 - sm(4.6, 5.4, t)), cu2 = 0;
+  const cu = Math.max(cu1, cu2);
+  const tgx = cu1 > cu2 ? 0.03 : fx, tgy = cu1 > cu2 ? 0 : fy;
+  fx += (tgx - fx) * cu1 * 0.8; fy += (tgy - fy) * cu1 * 0.8;
+  const dist = (0.36 + 1.6 * spread * 0.5 - 0.06 * tw + 0.04 * sm(26, 30, t)) * (1 - 0.4 * cu);
+  const tilt = (56 + 6 * tw + 10 * cu) * (Math.PI / 180);
+  return { yaw, dist, tilt, look: [fx, fy, 0.004 + 0.009 * tw + 0.004 * cu] };
 }
 
 /** the creature's story moments under the names the score uses (scripts/gen-music-ferromusic.ts) */

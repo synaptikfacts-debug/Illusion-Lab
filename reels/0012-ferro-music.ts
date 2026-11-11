@@ -31,7 +31,7 @@ export default defineReel({
     musicGen: { style: "ferromusic", bpm: 100, seed: 1212 },
     sfx: [{ at: 0, file: "generated/0012-ferro-music-sfx.wav", volume: 1 }],
   },
-  cover: { at: 22.9 },
+  cover: { at: 22.5 }, // the crown burst (thumbnails come from a 4K still of frame 1350)
   publish: {
     youtube: { title: "This liquid came alive", caption: "A pool of magnetic liquid with a heartbeat: it reaches out, crawls, splits in two, merges again and rises into a crown. Computer-made, ray-traced in Blender.", hashtags: ["#shorts", "#ferrofluid", "#satisfying"] },
     instagram: { caption: "This liquid came alive. Wait for the crown.", hashtags: ["#reels", "#ferrofluid", "#oddlysatisfying", "#satisfying", "#cinematic"] },

@@ -8,7 +8,7 @@ import { join } from "node:path";
 import type { Reel } from "../src/core/schema";
 import { rng } from "../src/core/seed";
 import { timeline } from "../src/core/timing";
-import { beats, LIFE } from "../src/scenes/ferroMusic/creature";
+import { beats, jumpersAt, leaps, LIFE } from "../src/scenes/ferroMusic/creature";
 import { addWrapped, reverb, stereo, writeWav } from "./lib/dsp";
 import { ASSETS } from "./lib/paths";
 
@@ -54,6 +54,14 @@ export function generateFerroMusicAudio(reel: Reel): string {
       return b * (t < len ? k ** 2.4 : Math.exp(-(t - len) * 25)) * g;
     });
   };
+  // leaping droplets: a tiny wet flick when one leaves, a soft round plop when it lands (pitch varies)
+  const plop = (at: number, g: number, f0: number, pan: number) => addWrapped(out, at, 0.25, pan, (t) => {
+    const f = f0 * (1 + 1.6 * Math.exp(-t * 40));
+    return Math.sin(2 * Math.PI * f * t) * Math.exp(-t * 26) * Math.min(1, t / 0.003) * g;
+  });
+  let np = 0;
+  for (const L of leaps()) { if (L.t > 0) plop(L.t, L.home ? 0.035 : 0.02, 900 + 300 * Math.cos(L.a * 3), 0.5 + 0.25 * Math.cos(L.a)); }
+  for (const l of jumpersAt(0).landings) { plop(l.t, l.burst ? 0.05 : 0.06, l.burst ? 520 + 160 * (np % 4) : 420 + 60 * (np % 3), 0.35 + 0.1 * (np % 4)); np++; }
   shlick(LIFE.reach + 0.1, 0.08, 0.6);
   shlick(LIFE.split + 0.3, 0.08, 0.4);
   shlick(LIFE.split + 0.45, 0.07, 0.6);
@@ -69,6 +77,6 @@ export function generateFerroMusicAudio(reel: Reel): string {
   reverb(out, { room: 0.55, damp: 0.6, wet: 0.14, preDelayMs: 10, loop: false });
   const rel = `generated/${reel.id}-sfx.wav`;
   writeWav(join(ASSETS, rel), out, 1.0);
-  console.log(`wrote assets/${rel} (${nb} heartbeats, wet sounds, 2 deep drops)`);
+  console.log(`wrote assets/${rel} (${nb} heartbeats, ${np} droplet landings, wet sounds, 2 deep drops)`);
   return rel;
 }
