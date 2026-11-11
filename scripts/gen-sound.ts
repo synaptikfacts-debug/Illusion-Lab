@@ -3,6 +3,7 @@ import { generateBounceAudio } from "./gen-bounce-audio";
 import { generateMusic } from "./gen-music";
 import { generatePinAudio } from "./gen-pin-audio";
 import { generatePinShowAudio } from "./gen-pinshow-audio";
+import { generateFerroMusicAudio } from "./gen-ferromusic-audio";
 import { generateRodAudio } from "./gen-rod-audio";
 import { generateDominoAudio } from "./gen-domino-audio";
 import { generateFaceAudio } from "./gen-face-audio";
@@ -25,6 +26,7 @@ if (!id) {
 const reel = await loadReel(id);
 if (reel.illusion.type === "pinWall") generatePinAudio(reel);
 if (reel.illusion.type === "pinShow" || reel.id.startsWith("0011-singing-pins-show")) generatePinShowAudio(reel);
+if (reel.audio.musicGen?.style === "ferromusic") generateFerroMusicAudio(reel);
 if (reel.illusion.type === "rodStory") generateRodAudio(reel);
 if (reel.illusion.type === "dominoStory") generateDominoAudio(reel);
 if (reel.illusion.type === "faceStory") generateFaceAudio(reel);
