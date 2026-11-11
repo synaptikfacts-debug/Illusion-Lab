@@ -14,6 +14,7 @@ import { ink, inkContinue } from "../illusions/ink";
 import { clip, clipContinue } from "../illusions/clip";
 import { sand, sandContinue } from "../illusions/sand";
 import { pinWall, pinWallContinue } from "../illusions/pinWall";
+import { pinShow, pinShowContinue } from "../illusions/pinShow";
 import { rodStory, rodStoryContinue } from "../illusions/rodStory";
 import { livingAfterimage } from "../illusions/livingAfterimage";
 import { livingSculpture } from "../illusions/livingSculpture";
@@ -27,6 +28,7 @@ export const ILLUSIONS: Record<string, EffectDef> = {
   livingSculpture,
   bounceField,
   pinWall,
+  pinShow,
   rodStory,
   dominoStory,
   faceStory,
@@ -47,6 +49,7 @@ export const TRANSFORMS: Record<string, EffectDef> = {
   morphChain,
   bounceFieldContinue,
   pinWallContinue,
+  pinShowContinue,
   rodStoryContinue,
   dominoStoryContinue,
   faceStoryContinue,
