@@ -11,17 +11,19 @@ import { defineReel } from "../src/core/define";
 //  0-2.6     HOOK: mid-heartbeat, rings of spikes rushing out (lub-dub)
 //  2.6-5     it reaches out (pseudopod);  5-10 it crawls, a ripple along its back, droplets get swallowed
 //  10-15.2   it splits in two; the halves answer each other's heartbeats
-//  15.2      they MERGE (hit);  16-22 the heartbeat speeds up
-//  22        PAYOFF: the CROWN (hit, D major release)
-//  24.3-27.5 one long exhale, a last faint heartbeat;  27.5-30 ENDING: fade
-const clip = { src: "generated/0012-ferro-music.mp4", fade: [27.5, 29.9] as [number, number] };
+//  15.2      they MERGE (hit)
+//  15.6-19.6 a spiral wave runs over its spikes while droplets rain onto it
+//  19.6-26.2 it splits into THREE, they circle and answer each other; 26.2 they slam together (hit)
+//  27-33     the heartbeat speeds up;  33 PAYOFF: the CROWN + a burst of droplets (hit, D major)
+//  35.3-38.5 one long exhale, the droplets pulled home, a last faint heartbeat;  38.5-42 ENDING: fade
+const clip = { src: "generated/0012-ferro-music.mp4", fade: [38.5, 41.9] as [number, number] };
 
 export default defineReel({
   id: "0012-ferro-music",
   title: "Ferrofluid vs Music",
   seed: 1212,
   palette: { bg: "#020206", fg: "#22d8ff", accent: "#ff2fa0", accent2: "#7a3dff" },
-  phases: { hook: 0.5, challenge: 0, reveal: 0, transform: 29.5 },
+  phases: { hook: 0.5, challenge: 0, reveal: 0, transform: 41.5 },
   loop: false,
   illusion: { type: "clip", props: clip },
   transform: { type: "clipContinue", props: clip },
@@ -31,9 +33,9 @@ export default defineReel({
     musicGen: { style: "ferromusic", bpm: 100, seed: 1212 },
     sfx: [{ at: 0, file: "generated/0012-ferro-music-sfx.wav", volume: 1 }],
   },
-  cover: { at: 22.5 }, // the crown burst (thumbnails come from a 4K still of frame 1350)
+  cover: { at: 33.5 }, // the crown burst (thumbnails come from a 4K still)
   publish: {
-    youtube: { title: "This liquid came alive", caption: "A pool of magnetic liquid with a heartbeat: it reaches out, crawls, splits in two, merges again and rises into a crown. Computer-made, ray-traced in Blender.", hashtags: ["#shorts", "#ferrofluid", "#satisfying"] },
+    youtube: { title: "This liquid came alive", caption: "A pool of magnetic liquid with a heartbeat: it reaches out, crawls, splits in two, then in three, slams back together and rises into a crown. Computer-made, ray-traced in Blender.", hashtags: ["#shorts", "#ferrofluid", "#satisfying"] },
     instagram: { caption: "This liquid came alive. Wait for the crown.", hashtags: ["#reels", "#ferrofluid", "#oddlysatisfying", "#satisfying", "#cinematic"] },
     facebook: { caption: "This liquid came alive. Wait for the crown.", hashtags: ["#reels", "#satisfying"] },
     tiktok: { caption: "this liquid came alive (wait for the crown)", hashtags: ["#fyp", "#ferrofluid", "#oddlysatisfying", "#satisfying", "#asmr"] },

@@ -14,15 +14,18 @@
 import { sm } from "./score";
 
 export const LIFE = {
-  duration: 30,
-  fade: [27.5, 29.9] as [number, number],
+  duration: 42, // owner, Nov 11: '30 s is not enough' - a new middle act (15.2-27)
+  fade: [38.5, 41.9] as [number, number],
   reach: 2.6,
   crawl: [5, 10] as [number, number],
   split: 10,
   merge: 15.2,
-  build: [16, 22] as [number, number],
-  crown: 22,
-  exhale: [24.3, 27.5] as [number, number],
+  dance: [15.6, 19.6] as [number, number], // a spiral wave runs over its spikes while droplets rain onto it
+  split3: 19.6, // it splits into THREE, they circle and answer each other's heartbeats
+  merge2: 26.2, // ...and slam back together
+  build: [27, 33] as [number, number],
+  crown: 33,
+  exhale: [35.3, 38.5] as [number, number],
   R: 0.042,
 };
 
@@ -35,12 +38,16 @@ export function beats(): { t: number; who: number; g: number }[] {
   for (const t of [3.6, 5.1, 6.6, 8.1, 9.4]) out.push({ t, who: 0, g: 0.55 });
   // split: call and response
   [10.9, 12.0, 13.1, 14.1].forEach((t, i) => { out.push({ t, who: 1, g: 0.7 }); out.push({ t: t + 0.5, who: 2, g: 0.7 }); });
+  // the dance: calm beats under the spiral wave
+  for (const t of [16.4, 17.7, 19.0]) out.push({ t, who: 0, g: 0.6 });
+  // three-way split: each lobe answers in turn
+  [20.8, 22.2, 23.6, 25.0].forEach((t) => { out.push({ t, who: 1, g: 0.65 }); out.push({ t: t + 0.45, who: 2, g: 0.65 }); out.push({ t: t + 0.9, who: 3, g: 0.65 }); });
   // build: accelerating
-  let t = 16.6, gap = 1.0;
-  while (t < LIFE.crown - 0.3) { out.push({ t, who: 0, g: 0.7 + 0.3 * sm(16.5, 22, t) }); t += gap; gap = Math.max(0.42, gap * 0.86); }
+  let t = LIFE.build[0] + 0.6, gap = 1.0;
+  while (t < LIFE.crown - 0.3) { out.push({ t, who: 0, g: 0.7 + 0.3 * sm(LIFE.build[0], LIFE.crown, t) }); t += gap; gap = Math.max(0.42, gap * 0.86); }
   // after the crown: slow breathing beats, then the last faint one
-  for (const tb of [23.1, 24.3]) out.push({ t: tb, who: 0, g: 0.45 });
-  out.push({ t: 26.4, who: 0, g: 0.25 });
+  for (const tb of [LIFE.crown + 1.1, LIFE.crown + 2.3]) out.push({ t: tb, who: 0, g: 0.45 });
+  out.push({ t: LIFE.exhale[0] + 2.1, who: 0, g: 0.25 });
   return out.sort((a, b) => a.t - b.t);
 }
 
@@ -59,6 +66,13 @@ export function blobs(t: number): Blob[] {
     const pod = { x: cx + 0.034 * reachOut + 0.004 * Math.sin(TAU * t * 0.8), y: cy + 0.004 * Math.sin(TAU * t * 0.5), R: R * 0.55 * reachOut };
     return reachOut > 0.02 ? [main, pod] : [main];
   }
+  if (t >= LIFE.split3) {
+    // three lobes drift apart in a triangle, slowly circle, then slam back together
+    const sep3 = sm(LIFE.split3, LIFE.split3 + 1.6, t) * (1 - sm(LIFE.merge2 - 0.6, LIFE.merge2, t));
+    const a3 = Math.PI / 2 + 0.25 * (t - LIFE.split3);
+    const d3 = 0.038 * sep3, r3 = R * (1 - 0.33 * sep3);
+    return [0, 1, 2].map((k) => ({ x: d3 * Math.cos(a3 + (k * TAU) / 3), y: d3 * Math.sin(a3 + (k * TAU) / 3), R: r3 }));
+  }
   // split: two halves drift apart, slowly circle, then rush back together
   const sep = sm(LIFE.split, LIFE.split + 1.6, t) * (1 - sm(LIFE.merge - 0.7, LIFE.merge, t));
   const a = Math.PI / 2 + 0.35 * sm(LIFE.split, LIFE.merge, t);
@@ -76,6 +90,7 @@ export interface LifeFrame {
   rings: number[][]; // [blob index or -1 = body centre, radius, amp]
   base: number;
   wave: number[]; // [dirx, diry, k, phase, amp]
+  swirl: number[]; // [amp, arms, phase]: a spiral wave running over the spikes
   crown: number;
   lean: number[]; // [lx, ly]
   jumpers: number[][]; // [x, y, z, radius, stretch, yaw, pitch] of every droplet in the air (or resting on the mirror)
@@ -113,6 +128,7 @@ export function lifeAt(t: number): LifeFrame {
     glow,
     base: (0.0032 + 0.004 * build) * alive + 0.0004,
     wave: [1, 0, 330, -TAU * 1.4 * t, 0.006 * crawling],
+    swirl: [0.008 * sm(LIFE.dance[0], LIFE.dance[0] + 0.8, t) * (1 - sm(LIFE.dance[1] - 0.5, LIFE.dance[1] + 0.2, t)), 3, -1.3 * (t - LIFE.dance[0])],
     crown,
     lean,
   };
@@ -123,11 +139,13 @@ export function lifeAt(t: number): LifeFrame {
 // with a tiny splash ring), and at the crown a burst of beads sprays out onto the mirror; during the exhale the
 // creature slowly pulls them all back home.
 const G = 1.1; // slow-motion gravity (m/s^2) so a leap reads clearly
-export interface Leap { t: number; a: number; d: number; up: number; out: number; r: number; home: boolean }
+export interface Leap { t: number; a: number; d: number; up: number; out: number; r: number; home: boolean; z0?: number }
 export function leaps(): Leap[] {
   const out: Leap[] = [];
-  const small: [number, number][] = [[1.25, 0.6], [4.2, -0.4], [6.1, 2.4], [7.7, 1.2], [8.9, -2.0], [11.6, 2.8], [12.7, -0.9], [13.9, 1.8], [17.4, 0.3], [18.6, -2.4], [19.7, 1.4], [20.9, -1.0], [25.2, 0.9]];
+  const small: [number, number][] = [[1.25, 0.6], [4.2, -0.4], [6.1, 2.4], [7.7, 1.2], [8.9, -2.0], [11.6, 2.8], [12.7, -0.9], [13.9, 1.8], [21.5, 0.3], [23.0, -2.4], [24.4, 1.4], [28.4, 0.3], [29.6, -2.4], [30.7, 1.4], [31.9, -1.0], [36.2, 0.9]];
   small.forEach(([t, a], i) => out.push({ t, a, d: 0.012 + 0.006 * (i % 3), up: 0.3 + 0.05 * (i % 2), out: 0.012 + 0.004 * (i % 2), r: 0.0024 + 0.0006 * (i % 3), home: true }));
+  // rain: beads fall from above onto it during the dance, each with a splash
+  for (let i = 0; i < 9; i++) out.push({ t: LIFE.dance[0] + 0.3 + i * 0.42, a: i * 2.4, d: 0.008 + 0.004 * (i % 4), up: 0, out: 0.003, r: 0.0022 + 0.0005 * (i % 3), home: true, z0: 0.09 });
   // the crown burst: beads spray out in all directions and land on the mirror
   for (let i = 0; i < 12; i++) out.push({ t: LIFE.crown + 0.06 + 0.03 * (i % 4), a: (i / 12) * TAU + 0.2, d: 0.006, up: 0.27 + 0.035 * (i % 3), out: 0.085 + 0.02 * (i % 2), r: 0.0026 + 0.0008 * (i % 3), home: false });
   return out;
@@ -142,7 +160,7 @@ export function jumpersAt(t: number): { drops: number[][]; rings: number[][]; la
   const drops: number[][] = [], rings: number[][] = [], landings: { t: number; burst: boolean }[] = [];
   for (const L of leaps()) {
     const c0 = centroid(L.t);
-    const x0 = c0.x + Math.cos(L.a) * L.d, y0 = c0.y + Math.sin(L.a) * L.d, z0 = 0.012;
+    const x0 = c0.x + Math.cos(L.a) * L.d, y0 = c0.y + Math.sin(L.a) * L.d, z0 = L.z0 ?? 0.012;
     const T = (L.up + Math.sqrt(L.up * L.up + 2 * G * z0)) / G; // flight time until it lands at z = 0
     landings.push({ t: L.t + T, burst: !L.home });
     const age = t - L.t;
@@ -173,9 +191,11 @@ const LIGHTS: [number, number[], number[]][] = [
   [0, [0.1, 0.75, 1.0], [1.0, 0.1, 0.6]],
   [10, [0.25, 0.35, 1.0], [1.0, 0.2, 0.7]],
   [16, [0.6, 0.25, 1.0], [0.1, 0.8, 1.0]],
-  [21, [0.6, 0.85, 1.0], [1.0, 0.1, 0.55]],
-  [24, [0.15, 0.7, 1.0], [0.7, 0.2, 1.0]],
-  [28, [0.25, 0.5, 1.0], [0.7, 0.2, 1.0]],
+  [21, [0.0, 0.9, 0.9], [1.0, 0.15, 0.8]],
+  [27, [0.45, 0.3, 1.0], [0.1, 0.6, 1.0]],
+  [32, [0.6, 0.85, 1.0], [1.0, 0.1, 0.55]],
+  [35, [0.15, 0.7, 1.0], [0.7, 0.2, 1.0]],
+  [40, [0.25, 0.5, 1.0], [0.7, 0.2, 1.0]],
 ];
 export function lightsAt(t: number) {
   let i = 0;
@@ -191,7 +211,7 @@ export function lifeCam(t: number) {
   let fx = 0, fy = 0, w = 0;
   for (const b of bs) { fx += b.x * b.R; fy += b.y * b.R; w += b.R; }
   fx /= w; fy /= w;
-  const tw = sm(LIFE.crown - 2.5, LIFE.crown + 0.8, t) * (1 - sm(25, 29, t));
+  const tw = sm(LIFE.crown - 2.5, LIFE.crown + 0.8, t) * (1 - sm(LIFE.exhale[0] + 0.7, LIFE.fade[0] + 0.5, t));
   const spread = bs.length > 1 ? Math.hypot(bs[0].x - bs[1].x, bs[0].y - bs[1].y) : 0;
   const yaw = (-12 + 24 * sm(0, LIFE.duration, t)) * (Math.PI / 180);
   // two cinematic close-ups: the reaching arm, and the moment the halves merge
@@ -200,7 +220,7 @@ export function lifeCam(t: number) {
   const cu = Math.max(cu1, cu2);
   const tgx = cu1 > cu2 ? 0.03 : fx, tgy = cu1 > cu2 ? 0 : fy;
   fx += (tgx - fx) * cu1 * 0.8; fy += (tgy - fy) * cu1 * 0.8;
-  const dist = (0.36 + 1.6 * spread * 0.5 - 0.06 * tw + 0.04 * sm(26, 30, t)) * (1 - 0.4 * cu);
+  const dist = (0.36 + (bs.length === 3 ? 1.35 : 0.8) * spread - 0.06 * tw + 0.04 * sm(LIFE.exhale[0] + 1.7, LIFE.fade[1], t)) * (1 - 0.4 * cu);
   const tilt = (56 + 6 * tw + 10 * cu) * (Math.PI / 180);
   return { yaw, dist, tilt, look: [fx, fy, 0.004 + 0.009 * tw + 0.004 * cu] };
 }
@@ -211,6 +231,9 @@ export const FM_EVENTS = {
   walk: LIFE.crawl,
   second: LIFE.split,
   merge: LIFE.merge,
+  dance: LIFE.dance,
+  split3: LIFE.split3,
+  merge2: LIFE.merge2,
   spin2: [LIFE.build[0], LIFE.crown] as [number, number],
   tower: LIFE.crown,
   melt: LIFE.exhale,

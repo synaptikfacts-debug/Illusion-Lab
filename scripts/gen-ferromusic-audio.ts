@@ -27,7 +27,7 @@ export function generateFerroMusicAudio(reel: Reel): string {
   };
   let nb = 0;
   for (const b of beats()) {
-    const pan = b.who === 1 ? 0.3 : b.who === 2 ? 0.7 : 0.5;
+    const pan = b.who === 1 ? 0.3 : b.who === 2 ? 0.7 : b.who === 3 ? 0.5 : 0.5;
     thump(b.t, 0.3 * b.g, pan, 62);
     thump(b.t + 0.22, 0.18 * b.g, pan, 70);
     nb++;
@@ -67,6 +67,11 @@ export function generateFerroMusicAudio(reel: Reel): string {
   shlick(LIFE.split + 0.45, 0.07, 0.6);
   shlick(LIFE.merge - 0.08, 0.11);
   drop(LIFE.merge, 0.2);
+  shlick(LIFE.split3 + 0.3, 0.07, 0.3);
+  shlick(LIFE.split3 + 0.4, 0.07, 0.5);
+  shlick(LIFE.split3 + 0.5, 0.07, 0.7);
+  shlick(LIFE.merge2 - 0.08, 0.12);
+  drop(LIFE.merge2, 0.26);
   whoosh(LIFE.crown - 2.2, 2.2, 0.13);
   drop(LIFE.crown, 0.36);
   let lp = 0;

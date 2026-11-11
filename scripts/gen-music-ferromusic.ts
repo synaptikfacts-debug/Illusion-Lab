@@ -62,12 +62,28 @@ export function generateFerroMusic(reel: Reel): string {
   O("timpaniRoll", 45, 14.6, 0.14, 1.4, 0.5, 0.1);
   hit(FM.merge, 0.6);
 
+  // 15.6-19.6 the dance and the rain: a gentle, glowing interlude - harp-like piano arpeggios over warm strings
+  const dch: [number, number[]][] = [[38, [62, 65, 69, 74]], [43, [62, 67, 70, 74]]];
+  for (let i = 0; i < 4; i++) {
+    const t0 = FM.dance[0] + i * 1.0, [root, tones] = dch[i % 2];
+    O("celli", root + 12, t0, 0.05, 1.05, 0.42, 1.0);
+    tones.forEach((m, j) => P(m + 12, t0 + j * 0.2, 0.045, 1.0, 0.35 + 0.1 * j));
+  }
+  O("violas", 69, FM.dance[0], 0.035, FM.dance[1] - FM.dance[0], 0.58, 1.2);
+  // 19.6-26.2 three lobes: the ostinato returns in three voices (one per lobe), horns call, roll into the slam
+  O("horn", 57, FM.split3, 0.08, 2.5, 0.6, 1.5);
+  ostinato(FM.split3 + 0.5, FM.merge2, 0.085, [38, 50, 45, 53]);
+  O("violas", 62, FM.split3 + 2, 0.04, 4, 0.58, 0.3);
+  O("violins", 74, FM.merge2 - 2, 0.045, 2, 0.64, 0.2);
+  O("timpaniRoll", 45, FM.merge2 - 1.4, 0.16, 1.4, 0.5, 0.1);
+  hit(FM.merge2, 0.8);
+
   // 16-22 the second spin: full ostinato, a rising violin line, horns swell, roll into the tower
   ostinato(FM.spin2[0] + 0.3, FM.tower, 0.12, [38, 50, 46, 50]);
-  [74, 76, 77, 79, 81, 82].forEach((m, i) => O("violins", m, 16.5 + i * 0.9, 0.05 + i * 0.006, 0.95, 0.64, 0.3));
-  O("horn", 50, 19, 0.06, 3, 0.4, 0.3);
-  O("horn", 57, 19.2, 0.06, 2.8, 0.6, 0.3);
-  O("timpaniRoll", 45, 20.4, 0.2, 1.6, 0.5, 0.1);
+  [74, 76, 77, 79, 81, 82].forEach((m, i) => O("violins", m, FM.spin2[0] + 0.5 + i * 0.9, 0.05 + i * 0.006, 0.95, 0.64, 0.3));
+  O("horn", 50, FM.tower - 3, 0.06, 3, 0.4, 0.3);
+  O("horn", 57, FM.tower - 2.8, 0.06, 2.8, 0.6, 0.3);
+  O("timpaniRoll", 45, FM.tower - 1.6, 0.2, 1.6, 0.5, 0.1);
 
   // 22 THE TOWER: a deep hit and the release on D MAJOR, held and ringing out
   hit(FM.tower, 1.15);

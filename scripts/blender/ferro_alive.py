@@ -215,6 +215,10 @@ def heights(fr, t):
     dx, dy, k, ph, wa = fr["wave"]
     if wa > 1e-5:
         amp += wa * (0.5 + 0.5 * np.cos(k * (sx * dx + sy * dy) + ph)) ** 3
+    sw = fr.get("swirl", [0, 3, 0])
+    if sw[0] > 1e-5:  # a spiral wave running over the spikes
+        ang = np.arctan2(sy, sx)
+        amp += sw[0] * (0.5 + 0.5 * np.cos(sw[1] * ang - 120 * sr + sw[2])) ** 3
     if fr["crown"] > 1e-4:
         amp = amp * (1 - 0.6 * fr["crown"] * (1 - np.exp(-((sr / 0.02) ** 2)))) + 0.03 * fr["crown"] * np.exp(-((sr / 0.014) ** 2))
     # real spikes are never identical: each site gets its own height (rides with the body)
