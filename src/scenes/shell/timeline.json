@@ -1,0 +1,14 @@
+{
+  "_": "0017 Obsidian Heart v5 - real-time beats (s) of the edited reel (shell.py story4): cold open on the urchin, a fast rewind, then the story shifted by +2.2 s. Ends with a fade.",
+  "duration": 18.2,
+  "openPulse": 0.7,
+  "rewind": [1.0, 2.2],
+  "peel": [2.5, 5.0],
+  "blast": [5.0, 5.8],
+  "grow": [8.2, 10.5],
+  "pulses": [10.8, 11.5, 12.2],
+  "retract": [12.7, 14.0],
+  "slam": [14.2, 15.6],
+  "last": 16.4,
+  "fade": [16.6, 18.1]
+}
