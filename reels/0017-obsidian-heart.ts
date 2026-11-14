@@ -31,7 +31,7 @@ export default defineReel({
     musicGen: { style: "shell", bpm: 60, seed: 1717 },
     sfx: [{ at: 0, file: "generated/0017-obsidian-heart-sfx.wav", volume: 1 }],
   },
-  cover: { at: 10.0 }, // the ice urchin fully grown, plates orbiting
+  cover: { at: 2.33 }, // the whole frosted ball in the snow (owner, Nov 14: no crystals on the thumbnail)
   publish: {
     youtube: { title: "What is inside this frozen sphere", caption: "A cracked ball of ice with a crystal heart. It opens, grows, and closes again. Rendered, not filmed.", hashtags: ["#shorts", "#satisfying", "#3d"] },
     instagram: { caption: "What is inside this frozen sphere? Rendered, not filmed.", hashtags: ["#reels", "#satisfying", "#oddlysatisfying", "#3dart", "#cgi"] },
