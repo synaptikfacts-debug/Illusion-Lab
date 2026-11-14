@@ -1,8 +1,7 @@
 {
-  "_": "0017 Obsidian Heart v5 - real-time beats (s) of the edited reel (shell.py story4): cold open on the urchin, a fast rewind, then the story shifted by +2.2 s. Ends with a fade.",
+  "_": "0017 v7 (frost) - real-time beats (s) of the reel (shell.py story4): 0-2.2 the closed frosted ball close up, its heart flaring on the heartbeats, then the story shifted by +2.2 s. Ends with a fade.",
   "duration": 18.2,
-  "openPulse": 0.7,
-  "rewind": [1.0, 2.2],
+  "heartbeats": [0.0, 0.7, 1.4, 2.0],
   "peel": [2.5, 5.0],
   "blast": [5.0, 5.8],
   "grow": [8.2, 10.5],

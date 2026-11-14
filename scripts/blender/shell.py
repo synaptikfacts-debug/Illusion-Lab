@@ -24,6 +24,24 @@ FPS = int(argv[2]) if len(argv) > 2 else 60
 K = int(argv[3]) if len(argv) > 3 else 0
 NN = int(argv[4]) if len(argv) > 4 else 1
 ONLY = [int(x) for x in argv[5].split(",")] if len(argv) > 5 and argv[5] else None
+# v6 palette switch (owner, Nov 14: "my 3 last reels are violet"): SHELL_PALETTE=amethyst|emerald|ember
+# neb: nebula tint | glass/glass_abs: smoked shell base + absorption | cry/cry_abs/cry_em: crystals | heart: inner light
+PALETTES = {
+    "amethyst": dict(neb=(0.16, 0.04, 0.32), glass=(0.75, 0.6, 1.0), glass_abs=(0.55, 0.3, 0.9),
+                     cry=(0.52, 0.27, 0.92), cry_abs=(0.66, 0.16, 0.9), cry_em=(0.62, 0.18, 1.0), heart=(0.7, 0.45, 1.0)),
+    "emerald": dict(neb=(0.2, 0.13, 0.03), glass=(0.6, 0.95, 0.7), glass_abs=(0.2, 0.8, 0.4),
+                    cry=(0.18, 0.85, 0.42), cry_abs=(0.12, 0.8, 0.35), cry_em=(0.35, 1.0, 0.45), heart=(1.0, 0.82, 0.5)),
+    "ember": dict(neb=(0.02, 0.09, 0.18), glass=(0.9, 0.65, 0.5), glass_abs=(0.8, 0.45, 0.25),
+                  cry=(0.95, 0.38, 0.1), cry_abs=(0.9, 0.3, 0.06), cry_em=(1.0, 0.45, 0.12), heart=(1.0, 0.78, 0.5)),
+    # frost (owner, Nov 14: "frost snow / icy frost ball"): a frosted ice sphere (clear-ice and hoarfrost patches),
+    # clear ice crystals that go deep blue where thick, cold blue-white light, a cold-blue nebula, drifting snow
+    "frost": dict(neb=(0.03, 0.08, 0.18), glass=(0.86, 0.95, 1.0), glass_abs=(0.72, 0.88, 1.0),
+                  cry=(0.8, 0.93, 1.0), cry_abs=(0.55, 0.82, 1.0), cry_em=(0.6, 0.85, 1.0), heart=(0.75, 0.88, 1.0),
+                  frost=1.0, cry_density=24.0, snow=True),
+}
+PAL = PALETTES[os.environ.get("SHELL_PALETTE", "frost")]
+FROST = PAL.get("frost", 0.0)
+SNOW = PAL.get("snow", False)
 os.makedirs(OUT, exist_ok=True)
 
 DUR = 18.0  # real length (owner, Nov 14: 20 s is enough; v3 opens on the old 11 s effect)
@@ -64,10 +82,16 @@ for d in prefs.devices:
 scene.cycles.device = "GPU"
 scene.cycles.samples = SAMPLES
 scene.cycles.use_adaptive_sampling = True
-scene.cycles.adaptive_threshold = 0.015
+scene.cycles.adaptive_threshold = 0.02  # v7: 0.015 never converged on the frosted (rough transmission) macro frames
 scene.cycles.use_denoising = True
 scene.cycles.denoiser = "OPTIX"
-scene.cycles.max_bounces = 10
+# v7: bounce caps - the frosted glass + DOF opening ran ~70 s/frame at 10 unbounded bounces; the denoiser covers the rest
+scene.cycles.max_bounces = 8
+scene.cycles.transmission_bounces = 8
+scene.cycles.glossy_bounces = 4
+scene.cycles.diffuse_bounces = 3
+scene.cycles.volume_bounces = 0
+scene.cycles.transparent_max_bounces = 6
 scene.cycles.caustics_reflective = False
 scene.cycles.caustics_refractive = False
 scene.render.use_persistent_data = True
@@ -99,7 +123,7 @@ nramp = wn.new("ShaderNodeValToRGB")
 nramp.color_ramp.elements[0].position = 0.45
 nramp.color_ramp.elements[0].color = (0, 0, 0, 1)
 nramp.color_ramp.elements[1].position = 0.78
-nramp.color_ramp.elements[1].color = (0.16, 0.04, 0.32, 1)  # a faint purple nebula
+nramp.color_ramp.elements[1].color = (*PAL["neb"], 1)  # a faint nebula in the palette's tint
 stars = wn.new("ShaderNodeTexVoronoi")
 stars.inputs["Scale"].default_value = 380.0
 sramp = wn.new("ShaderNodeValToRGB")
@@ -144,23 +168,47 @@ def principled(name, color, metal=0.0, rough=0.1, coat=0.0):
     return m
 
 
-obsidian = principled("SmokedGlass", (0.75, 0.6, 1.0), metal=0.0, rough=0.04, coat=0.6)
+obsidian = principled("SmokedGlass", PAL["glass"], metal=0.0, rough=0.04, coat=0.6)
 _ob = obsidian.node_tree.nodes
 _ob["Principled BSDF"].inputs["Transmission Weight"].default_value = 1.0
 _ob["Principled BSDF"].inputs["IOR"].default_value = 1.52
 _oabs = _ob.new("ShaderNodeVolumeAbsorption")
-_oabs.inputs["Color"].default_value = (0.55, 0.3, 0.9, 1)
+_oabs.inputs["Color"].default_value = (*PAL["glass_abs"], 1)
 _oabs.inputs["Density"].default_value = 9.0  # smoked: dark violet, but the crystals glow through
 obsidian.node_tree.links.new(_oabs.outputs[0], _ob["Material Output"].inputs["Volume"])
 # micro surface detail: faint scratches/waviness so the plates read as real polished stone
 on = obsidian.node_tree.nodes
 bump = on.new("ShaderNodeBump")
-bump.inputs["Strength"].default_value = 0.08
+bump.inputs["Strength"].default_value = 0.02  # v6: 0.08 speckled the glass
 nz = on.new("ShaderNodeTexNoise")
 nz.inputs["Scale"].default_value = 60.0
 nz.inputs["Detail"].default_value = 6.0
 obsidian.node_tree.links.new(nz.outputs["Fac"], bump.inputs["Height"])
 obsidian.node_tree.links.new(bump.outputs["Normal"], on["Principled BSDF"].inputs["Normal"])
+if FROST > 0:
+    # frosted ice: a noise field decides where the glass is clear ice (rough 0.03) and where hoarfrost sits (rough 0.5,
+    # with a fine crystalline bump); the smoke absorption stays faint so the heart shows through the clear patches
+    fn = on.new("ShaderNodeTexNoise")
+    fn.inputs["Scale"].default_value = 3.2
+    fn.inputs["Detail"].default_value = 9.0
+    fn.inputs["Roughness"].default_value = 0.7
+    framp = on.new("ShaderNodeValToRGB")
+    framp.color_ramp.elements[0].position = 0.42
+    framp.color_ramp.elements[0].color = (0.03, 0.03, 0.03, 1)
+    framp.color_ramp.elements[1].position = 0.6
+    framp.color_ramp.elements[1].color = (0.5 * FROST, 0.5 * FROST, 0.5 * FROST, 1)
+    obsidian.node_tree.links.new(fn.outputs["Fac"], framp.inputs["Fac"])
+    obsidian.node_tree.links.new(framp.outputs["Color"], on["Principled BSDF"].inputs["Roughness"])
+    fbn = on.new("ShaderNodeTexNoise")  # hoarfrost micro-crystals
+    fbn.inputs["Scale"].default_value = 140.0
+    fbn.inputs["Detail"].default_value = 4.0
+    fmul = on.new("ShaderNodeMath")
+    fmul.operation = "MULTIPLY"
+    obsidian.node_tree.links.new(fbn.outputs["Fac"], fmul.inputs[0])
+    obsidian.node_tree.links.new(framp.outputs["Color"], fmul.inputs[1])
+    obsidian.node_tree.links.new(fmul.outputs[0], bump.inputs["Height"])
+    bump.inputs["Strength"].default_value = 0.35
+    _oabs.inputs["Density"].default_value = 4.0
 spike_m = principled("SpikeGloss", (0.006, 0.006, 0.009), metal=0.3, rough=0.05, coat=1.0)
 # v3 urchin remake: each spike glows violet toward its tip, like light running out of the core along it
 _sn = spike_m.node_tree.nodes
@@ -227,17 +275,24 @@ for p in range(NPL):
         bv = np.array([k for k, v in nb.items() if len(v) == 2])
         n1 = np.array([nb[k][0] for k in bv])
         n2 = np.array([nb[k][1] for k in bv])
-        for _ in range(3):
+        # v6: default 0 - every relaxation pass (v5 used 3) produced thorns along the plate edges once solidified;
+        # the raw cut is crisp enough at hairline crack width
+        for _ in range(int(os.environ.get("SHELL_RELAX", "0"))):
             pv[bv] = 0.6 * pv[bv] + 0.2 * (pv[n1] + pv[n2])
             pv[bv] /= np.linalg.norm(pv[bv], axis=1, keepdims=True)
     c = pv.mean(0)
     c = c / np.linalg.norm(c) * R
     PC[p] = c
-    pv = c + (pv - c) * 0.965
+    pv = c + (pv - c) * 0.982  # v6: hairline cracks (0.965 read as a wire cage)
+    # v6: drop flipped / degenerate slivers the relaxation leaves at the corners - Solidify extruded them along
+    # their wrong normals into the thorns and rods seen on every v5 frame
+    lf = inv.reshape(-1, 3)
+    tn = np.cross(pv[lf[:, 1]] - pv[lf[:, 0]], pv[lf[:, 2]] - pv[lf[:, 0]])
+    keep = (tn @ c > 1e-9) & (np.linalg.norm(tn, axis=1) > 1e-7)
     base = len(verts)
     verts.extend(pv.tolist())
     vplate.extend([p] * len(pv))
-    faces.extend((inv.reshape(-1, 3) + base).tolist())
+    faces.extend((lf[keep] + base).tolist())
 mesh = bpy.data.meshes.new("Shell")
 mesh.from_pydata(verts, [], faces)
 mesh.update()
@@ -246,10 +301,20 @@ scene.collection.objects.link(shell)
 shell.data.materials.append(obsidian)
 for poly in mesh.polygons:
     poly.use_smooth = True
+# v6: the plate side walls (the crack faces) get a matte near-black material, so the cracks read as dark hairlines
+# with the heart glowing between them - v5's polished walls caught every light as a bright, toothed wire cage
+crack_m = principled("CrackWall", (0.02, 0.016, 0.02), metal=0.0, rough=0.7, coat=0.0)
+shell.data.materials.append(crack_m)
 sol = shell.modifiers.new("Thick", "SOLIDIFY")
 sol.thickness = 0.07
 sol.offset = -1
-sol.use_even_offset = True
+sol.use_even_offset = False  # v6: even offset extrapolated the walls into long rods at the plates' jagged corners
+sol.material_offset_rim = 1
+if os.environ.get("SHELL_SOLID", "simple") == "complex":
+    # tested Nov 14: the thorns came from the boundary relaxation, not the solidify mode; simple + no relax is clean
+    sol.solidify_mode = "NON_MANIFOLD"
+    sol.nonmanifold_thickness_mode = "CONSTRAINTS"
+    sol.nonmanifold_boundary_mode = "ROUND"
 bev = shell.modifiers.new("Edge", "BEVEL")
 bev.show_render = False  # the notched highlights on the plate sides came from this
 bev.width = 0.012
@@ -424,7 +489,7 @@ scene.cycles.volume_max_steps = 160
 
 ld = bpy.data.lights.new("CoreLight", "POINT")
 ld.shadow_soft_size = 0.7
-ld.color = (0.62, 0.42, 1.0)
+ld.color = PAL["heart"]
 corelight = bpy.data.objects.new("CoreLight", ld)
 scene.collection.objects.link(corelight)
 
@@ -654,13 +719,12 @@ DUR = 18.2
 
 
 def story4(r):
-    """v5 real -> story time: cold open on the pulsing urchin (story 8.6-9.6), a fast rewind to the closed sphere, then the story"""
-    if r < 1.0:
-        return 8.6 + r
-    if r < 2.2:
-        k = (r - 1.0) / 1.2
-        return 9.6 * (1 - k * k * (3 - 2 * k))
+    """v7 (owner, Nov 14: 'open with the ball instead, not the crystals'): the story runs straight, shifted by +2.2 s;
+    the first 2.2 s (story time < 0) are the closed frosted ball, close up, its heart flaring through the cracks"""
     return r - 2.2
+
+
+HEARTBEATS = (-2.2, -1.5, -0.8, -0.2)  # story times of the ball's light flares during the opening (real 0, 0.7, 1.4, 2.0)
 V4 = dict(peel=(0.3, 2.8), blast=(2.8, 3.6), grow=(6.0, 8.3), pulses=(8.6, 9.3, 10.0), retract=(10.5, 11.8),
           slam=(12.0, 13.4), last=14.2, fade=(14.4, 15.9))
 
@@ -669,17 +733,18 @@ amethyst.use_nodes = True
 an = amethyst.node_tree.nodes
 al = amethyst.node_tree.links
 ab = an["Principled BSDF"]
-ab.inputs["Base Color"].default_value = (0.7, 0.45, 1.0, 1)
+ab.inputs["Base Color"].default_value = (*PAL["cry"], 1)  # v6: deeper crystal body (v5 was milky lilac)
 ab.inputs["Transmission Weight"].default_value = 1.0
 ab.inputs["IOR"].default_value = 1.544
 ab.inputs["Roughness"].default_value = 0.02
-ab.inputs["Emission Color"].default_value = (0.62, 0.18, 1.0, 1)
+ab.inputs["Emission Color"].default_value = (*PAL["cry_em"], 1)
 aattr = an.new("ShaderNodeAttribute")
 aattr.attribute_name = "glow"
 al.new(aattr.outputs["Fac"], ab.inputs["Emission Strength"])
 aabs = an.new("ShaderNodeVolumeAbsorption")
-aabs.inputs["Color"].default_value = (0.66, 0.16, 0.9, 1)
-aabs.inputs["Density"].default_value = 22.0
+aabs.inputs["Color"].default_value = (*PAL["cry_abs"], 1)
+aabs.inputs["Density"].default_value = PAL.get("cry_density", 36.0)  # v6: thick bodies stay deep, thin tips go light
+ab.inputs["Roughness"].default_value = 0.02 + 0.06 * FROST  # ice: a touch of surface frost
 al.new(aabs.outputs[0], an["Material Output"].inputs["Volume"])
 
 NC = 120
@@ -723,18 +788,83 @@ crystals.data.materials.append(amethyst)
 glow_attr = cmesh.attributes.new("glow", "FLOAT", "POINT")
 heart = bpy.data.lights.new("HeartLight", "POINT")
 heart.shadow_soft_size = 0.25
-heart.color = (0.7, 0.45, 1.0)
+heart.color = PAL["heart"]
 heartlight = bpy.data.objects.new("HeartLight", heart)
 scene.collection.objects.link(heartlight)
 for o in (galaxy, rays, core, spikes):
     o.hide_render = True
+
+# ---------------- snow: drifting ice flakes + ice-dust bursts (frost palette) ----------------
+# ambient flakes fill the space around the sphere (near ones blur into bokeh), fall and drift slowly, get shoved
+# outward by the blast; two bursts of fine ice dust fly off the sphere at the blast and the slam, then fade
+NSNOW, NBURST = 650, 300
+srng = np.random.default_rng(4242)
+SB = srng.normal(size=(NSNOW, 3))
+SB /= np.linalg.norm(SB, axis=1, keepdims=True)
+SB *= srng.uniform(1.5, 7.5, NSNOW)[:, None]
+SDRIFT = srng.normal(0, 0.035, (NSNOW, 3))
+SDRIFT[:, 2] -= 0.05
+SSIZE = srng.uniform(0.012, 0.034, NSNOW)
+SPH = srng.uniform(0, TAU, NSNOW)
+SAX = srng.normal(size=(NSNOW + 2 * NBURST, 3))
+SAX /= np.linalg.norm(SAX, axis=1, keepdims=True)
+SSPIN = srng.uniform(0.3, 1.4, NSNOW + 2 * NBURST)
+BD = srng.normal(size=(2 * NBURST, 3))
+BD /= np.linalg.norm(BD, axis=1, keepdims=True)
+BSP = srng.uniform(0.5, 2.6, 2 * NBURST)
+BSIZE = srng.uniform(0.006, 0.018, 2 * NBURST)
+NFL = NSNOW + 2 * NBURST
+FLAKE = np.array([(0, 0, 0)] + [(math.cos(TAU * s / 6), math.sin(TAU * s / 6), 0) for s in range(6)], dtype=np.float64)
+sv = [(0, 0, 0)] * (NFL * 7)
+sf = [(i * 7, i * 7 + 1 + s, i * 7 + 1 + (s + 1) % 6) for i in range(NFL) for s in range(6)]
+snmesh = bpy.data.meshes.new("Snow")
+snmesh.from_pydata(sv, [], sf)
+snow = bpy.data.objects.new("Snow", snmesh)
+scene.collection.objects.link(snow)
+snow_m = principled("Snow", (0.9, 0.95, 1.0), metal=0.0, rough=0.3, coat=1.0)
+snow_m.node_tree.nodes["Principled BSDF"].inputs["Transmission Weight"].default_value = 0.35
+snow.data.materials.append(snow_m)
+snow.visible_shadow = False
+snow.hide_render = not SNOW
+
+
+def snow_frame(t):
+    if not SNOW:
+        return
+    centers = np.zeros((NFL, 3))
+    sizes = np.zeros(NFL)
+    # ambient
+    c = SB + SDRIFT * t
+    c[:, 0] += 0.06 * np.sin(0.7 * t + SPH)
+    age = t - V4["blast"][0]
+    if age > 0:
+        c += SB / np.linalg.norm(SB, axis=1, keepdims=True) * 1.1 * (1 - math.exp(-age * 1.8))
+    centers[:NSNOW] = c
+    sizes[:NSNOW] = SSIZE
+    # bursts: ice dust off the sphere at the blast and at the slam
+    for b, t0 in enumerate((V4["blast"][0], V4["slam"][1] - 0.15)):
+        a = t - t0
+        sl = slice(NSNOW + b * NBURST, NSNOW + (b + 1) * NBURST)
+        if 0 <= a < 2.6:
+            k = a * (1 - 0.3 * min(a, 1.0))
+            centers[sl] = BD[b * NBURST:(b + 1) * NBURST] * (1.03 + BSP[b * NBURST:(b + 1) * NBURST] * k)[:, None]
+            sizes[sl] = BSIZE[b * NBURST:(b + 1) * NBURST] * max(0.0, 1 - a / 2.6) * min(1.0, a / 0.05)
+    Rm = rot_matrices(SAX, SSPIN * t + np.arange(NFL) * 0.37)
+    local = np.einsum("nij,kj->nki", Rm, FLAKE) * sizes[:, None, None]
+    pos = centers[:, None, :] + local
+    snow.data.vertices.foreach_set("co", pos.astype(np.float32).ravel())
+    snow.data.update()
 
 
 def state4(t):
     out = np.zeros(NPL)
     spin = BASE_TILT.copy()
     swirl = np.zeros(NPL)
-    glow = 0.6 + 0.4 * sm(0, 0.3, t)  # frame 0: the cracks already glow
+    glow = 0.6 + 0.4 * sm(0, 0.3, t)  # the cracks already glow
+    for hb in HEARTBEATS:  # v7 opening: the heart flares through the cracks, a heartbeat
+        a_ = t - hb
+        if a_ > 0:
+            glow += 1.6 * math.exp(-a_ * 3.2) * min(1, a_ / 0.05)
     # peel: plates pop one after another, faster and faster
     p0, p1 = V4["peel"]
     tp = p0 + (p1 - p0) * CLICK_T ** 0.55
@@ -783,11 +913,11 @@ def crystal_mesh(t, L, show):
     # light pulses run through each crystal from base to tip
     g = np.full(len(CV4), 0.04 * show)
     frac = np.where(ring == 0, 0.0, np.where(ring == 1, 0.8, 1.0))
-    for tp_ in V4["pulses"]:
+    for tp_ in V4["pulses"] + HEARTBEATS:
         aa = t - tp_
         if aa > -0.1:
             front = aa * 1.6
-            g += 0.85 * np.exp(-((frac - front) / 0.25) ** 2) * math.exp(-max(aa, 0) * 0.8)
+            g += 0.55 * np.exp(-((frac - front) / 0.25) ** 2) * math.exp(-max(aa, 0) * 0.8)  # v6: softer, no blow-out
     glow_attr.data.foreach_set("value", g.astype(np.float32))
     crystals.hide_render = show < 0.01
 
@@ -798,7 +928,9 @@ def frame(f):
     out, spin, swirl, glow, L4, show4 = state4(t)
     spk = np.zeros(NPL)
     crystal_mesh(t, L4, show4)
-    heart.energy = 20 + 110 * show4 + 160 * sum(math.exp(-max(0.0, t - p) * 2) * (t > p) for p in V4["pulses"])
+    snow_frame(t)
+    # v6: a much weaker heart light - v5's 130-290 W inside a 0.3-unit space blew the crystals and the cracks to white
+    heart.energy = 10 + 30 * show4 + 70 * sum(math.exp(-max(0.0, t - p) * 2) * (t > p) for p in V4["pulses"])
     # plates: rotate in place (tumble), push out along the normal, then orbit around the vertical axis
     Rm = rot_matrices(AXES, spin)
     c_out = PC * (1 + out)[:, None]
@@ -839,7 +971,7 @@ def frame(f):
     closed = 1.0 - min(1.0, float(np.max(np.abs(out))) * 3)
     gem.inputs["Strength"].default_value = (2.5 + 16.0 * min(glow, 2.0)) * closed
     crackglow.scale = (0, 0, 0)  # v5: glass shell - the crystals themselves glow through
-    ld.energy = min(2600, 80 + 420 * glow)
+    ld.energy = min(900, 25 + 140 * glow)  # v6: a third of v5 - 80+420*glow blew the sphere's inside to white
     core.scale = (1 + 0.04 * math.sin(TAU * 0.9 * t),) * 3
     # light spikes: length follows how open the shell is, each flickers on its own
     openk = 1 - closed
@@ -884,11 +1016,23 @@ def frame(f):
     yaw = math.radians(14 * math.sin(TAU * treal / DUR))
     elv = math.radians(8 + 5 * math.sin(TAU * treal / DUR + 1.3))
     dist = 6.4 + 0.9 * sm(2.8, 4.0, t) * (1 - sm(11.6, 13.2, t)) + 2.2 * sm(6.0, 8.5, t) * (1 - sm(10.4, 12.0, t)) + 1.2 * sm(14.0, 16.0, t)
+    # v7 opening (owner: "open with the ball"): macro on the frosted ball - the frost and cracks fill the frame while the
+    # heart flares through them - then the camera pulls back and swings round to the story's start position by 2.2 s
+    focus_off = 0.6
+    if treal < 2.2:
+        k_open = sm(0.2, 2.2, treal)
+        dist = 2.9 * (1 - k_open) + 6.4 * k_open
+        elv += math.radians(18 * (1 - k_open))
+        yaw += math.radians(-35 * (1 - k_open))
+        focus_off = 0.6 + 0.4 * (1 - k_open)  # keep the frost surface sharp in the macro
     look = mathutils.Vector((0, 0, 0))
     pos = look + mathutils.Vector((math.sin(yaw) * math.cos(elv), -math.cos(yaw) * math.cos(elv), math.sin(elv))) * dist
     cam.location = pos
     cam.rotation_euler = (look - pos).to_track_quat("-Z", "Y").to_euler()
-    cd.dof.focus_distance = (look - pos).length - 0.6
+    cd.dof.focus_distance = (look - pos).length - focus_off
+    for nm in os.environ.get("SHELL_HIDE", "").split(","):  # debug: SHELL_HIDE=Shell,Crystals,... hides objects
+        if nm:
+            bpy.data.objects[nm].hide_render = True
     scene.render.filepath = os.path.join(OUT, f"f_{f:04d}.png")
     bpy.ops.render.render(write_still=True)
 
