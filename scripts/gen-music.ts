@@ -20,6 +20,7 @@ import { generateOrbMusic } from "./gen-music-orbs";
 import { generateLabyrinthMusic } from "./gen-music-labyrinth";
 import { generatePinShowMusic } from "./gen-music-pinshow";
 import { generateFerroMusic } from "./gen-music-ferromusic";
+import { generateUrchinMusic } from "./gen-music-urchin";
 
 // key of F: Fmaj7, Am7, Dm9, Bbmaj9 ... ending on Csus4, which resolves into Fmaj7 at the loop point
 const CHORDS: { root: number; tones: number[] }[] = [
@@ -43,6 +44,7 @@ export function generateMusic(reel: Reel): string {
   if (cfg.style === "labyrinth") return generateLabyrinthMusic(reel);
   if (cfg.style === "pinshow") return generatePinShowMusic(reel);
   if (cfg.style === "ferromusic") return generateFerroMusic(reel);
+  if (cfg.style === "urchin") return generateUrchinMusic(reel);
   const tl = timeline(reel);
   const total = tl.total / tl.fps;
   const bpm = cfg.bpm > 90 ? 72 : cfg.bpm; // calm by default

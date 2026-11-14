@@ -1,0 +1,14 @@
+{
+  "_": "0016 Urchin Heart - one timeline for picture (scripts/blender/urchin.py) and sound. Seconds. Loops: the end state equals frame 0.",
+  "duration": 30,
+  "R": 0.05,
+  "twitch": 0.4,
+  "beats": [2.2, 3.2, 4.2, 5.2, 7.0, 8.4, 9.8],
+  "crawl": [6.0, 10.0],
+  "urchin": [10.0, 15.0],
+  "split": [15.0, 19.0],
+  "merge": 22.6,
+  "breach": [23.4, 26.8],
+  "settle": [27.0, 30.0],
+  "spikes": 22
+}
