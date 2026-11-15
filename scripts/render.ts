@@ -33,6 +33,7 @@ import { generateMusic } from "./gen-music";
 import { loopDiff, normaliseLoudness } from "./lib/checks";
 import { run } from "./lib/ffmpeg";
 import { flashCheck } from "./lib/flash";
+import { edgeCheck } from "./lib/edges";
 import { ASSETS, ENTRY, OUT, PUBLISH } from "./lib/paths";
 import { assetPaths, loadReel } from "./lib/reels";
 
@@ -159,10 +160,12 @@ export async function renderReel(id: string, opts: { serveUrl?: string; draft?: 
 
   const flash = await step("photosensitivity check", () => flashCheck(master));
   const loop = await step("loop check", () => loopDiff(master, composition.durationInFrames));
+  // Instagram flags large flat single-colour areas at the frame edges as "Your video has a border" (0018, Nov 15)
+  const edges = await step("edge-band check (Instagram border)", async () => edgeCheck(master));
   const loud = await step("loudness -14 LUFS (SFX mix)", () => normaliseLoudness(sfxMix, sfxNorm, reel.audio.lufs));
   const loudMusic = hasMusic ? await step("loudness -14 LUFS (music mix)", () => normaliseLoudness(musicMix, musicNorm, reel.audio.lufs)) : null;
   const mixFor = (music: boolean) => (music && hasMusic ? musicNorm : sfxNorm);
-  const report = { id, draft, seconds: composition.durationInFrames / reel.fps, flash, loop: { diff: loop, tolerance: reel.loopTolerance }, loudness: { sfx: loud, music: loudMusic } };
+  const report = { id, draft, seconds: composition.durationInFrames / reel.fps, flash, loop: { diff: loop, tolerance: reel.loopTolerance }, loudness: { sfx: loud, music: loudMusic }, edges };
   writeFileSync(join(dir, "report.json"), JSON.stringify(report, null, 2));
 
   console.log(

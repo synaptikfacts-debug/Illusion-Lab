@@ -100,3 +100,6 @@ a different mechanic (Galton board, sand, liquid were all rejected as "nothing t
 - FRAMING: subject centred and fully in frame all the time; camera pulls back as things grow/spread; never blurry.
 - SOUND: creamy, muted, soft thocks tied to visible events; no bright clicks/woodblocks, no noise beds, never childish.
 - ENDING: settle + fade. Previews 30 fps, finals 60 fps, 4 GPU workers, 4K thumbnails, texts for every platform.
+- EDGES: no large flat single-colour areas along the frame edges - Instagram flagged 0018 "Your video has a border".
+  Fill the top/bottom/sides with real detail (lit background with depth, soft bokeh shapes, objects). The render now
+  runs an edge-band check (scripts/lib/edges.ts) and prints a WARNING; fix it before delivering.
