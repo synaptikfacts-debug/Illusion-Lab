@@ -171,6 +171,8 @@ export async function renderReel(id: string, opts: { serveUrl?: string; draft?: 
   console.log(
     `  flashes/s: luminance ${flash.maxFlashesPerSec.luminance}, red ${flash.maxFlashesPerSec.red} (max 3) | loop diff ${loop.toFixed(2)} (max ${reel.loopTolerance}) | SFX ${loud.silent ? "SILENT" : `${loud.outputLUFS} LUFS`}${loudMusic ? ` | music mix ${loudMusic.outputLUFS} LUFS` : ""}`,
   );
+  if (!edges.pass)
+    console.log(`  WARNING edge bands: ${Math.round(edges.flatShare * 100)}% of frames have a flat ${edges.worstEdge} edge - Instagram may say "Your video has a border". Fill the edges with detail (lit background, depth, objects) before delivering.`);
   if (!flash.pass)
     throw new Error(
       `PHOTOSENSITIVITY FAIL: ${flash.maxFlashesPerSec.luminance} luminance / ${flash.maxFlashesPerSec.red} red flashes per second ` +
