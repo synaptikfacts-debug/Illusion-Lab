@@ -16,6 +16,7 @@ import { generatePinShowAudio } from "./gen-pinshow-audio";
 import { generateFerroMusicAudio } from "./gen-ferromusic-audio";
 import { generateUrchinAudio } from "./gen-urchin-audio";
 import { generateShellAudio } from "./gen-shell-audio";
+import { generateHungryAudio } from "./gen-hungry-audio";
 import { generateRodAudio } from "./gen-rod-audio";
 import { generateDominoAudio } from "./gen-domino-audio";
 import { generateFaceAudio } from "./gen-face-audio";
@@ -99,6 +100,7 @@ export async function renderReel(id: string, opts: { serveUrl?: string; draft?: 
   if (usesGenerated && reel.audio.musicGen?.style === "ferromusic") generateFerroMusicAudio(reel);
   if (usesGenerated && reel.audio.musicGen?.style === "urchin") generateUrchinAudio(reel);
   if (usesGenerated && reel.audio.musicGen?.style === "shell") generateShellAudio(reel);
+  if (usesGenerated && reel.audio.musicGen?.style === "hungry") generateHungryAudio(reel);
   if (usesGenerated && reel.illusion.type === "rodStory") generateRodAudio(reel);
   if (usesGenerated && reel.illusion.type === "dominoStory") generateDominoAudio(reel);
   if (usesGenerated && reel.illusion.type === "faceStory") generateFaceAudio(reel);

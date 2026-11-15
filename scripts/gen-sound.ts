@@ -6,6 +6,7 @@ import { generatePinShowAudio } from "./gen-pinshow-audio";
 import { generateFerroMusicAudio } from "./gen-ferromusic-audio";
 import { generateUrchinAudio } from "./gen-urchin-audio";
 import { generateShellAudio } from "./gen-shell-audio";
+import { generateHungryAudio } from "./gen-hungry-audio";
 import { generateRodAudio } from "./gen-rod-audio";
 import { generateDominoAudio } from "./gen-domino-audio";
 import { generateFaceAudio } from "./gen-face-audio";
@@ -31,6 +32,7 @@ if (reel.illusion.type === "pinShow" || reel.id.startsWith("0011-singing-pins-sh
 if (reel.audio.musicGen?.style === "ferromusic") generateFerroMusicAudio(reel);
 if (reel.audio.musicGen?.style === "urchin") generateUrchinAudio(reel);
 if (reel.audio.musicGen?.style === "shell") generateShellAudio(reel);
+if (reel.audio.musicGen?.style === "hungry") generateHungryAudio(reel);
 if (reel.illusion.type === "rodStory") generateRodAudio(reel);
 if (reel.illusion.type === "dominoStory") generateDominoAudio(reel);
 if (reel.illusion.type === "faceStory") generateFaceAudio(reel);

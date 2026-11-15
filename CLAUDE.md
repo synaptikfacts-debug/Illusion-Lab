@@ -90,3 +90,13 @@ thumbnails, no upload texts until the owner says yes.
 Keep the reference's CORE IDEA and mechanic (e.g. thousands of glossy orbs bouncing at their own rhythms, forming
 shapes, a click per bounce). Make only the look ours: colours, plate/stage, camera, hook and ending. Do NOT swap in
 a different mechanic (Galton board, sand, liquid were all rejected as "nothing to do with the one I sent").
+
+## RULE: OWNER CHECKLIST - run it on the key stills BEFORE every preview (owner, Nov 15 2026: "remember everything I
+## said, don't make me fix your mistakes every time and waste credits")
+- HOOK: frame 0 is the climax/most striking moving image, a dramatic event within 0.5 s (cold open + fast rewind works);
+  something new every 1-2 s; honestly ask "would I swipe?".
+- LOOK: ultra realistic (Blender Cycles), bright enough to see everything, rich purple + small cyan, no brown/orange;
+  no cheap/AI-looking glows; subjects are full 3D forms; every reel looks different from the last one.
+- FRAMING: subject centred and fully in frame all the time; camera pulls back as things grow/spread; never blurry.
+- SOUND: creamy, muted, soft thocks tied to visible events; no bright clicks/woodblocks, no noise beds, never childish.
+- ENDING: settle + fade. Previews 30 fps, finals 60 fps, 4 GPU workers, 4K thumbnails, texts for every platform.

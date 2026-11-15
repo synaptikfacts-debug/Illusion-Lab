@@ -38,6 +38,52 @@ for o in (sur, rim, body):
 mirror = principled("BlackMirror", (0.003, 0.003, 0.005), rough=0.11, coat=0.5)
 fl.data.materials.clear()
 fl.data.materials.append(mirror)
+LOOK = os.environ.get("FERRO_LOOK", "B")  # 0018 uses B (owner, Nov 15); 0012 was rendered before this existed  # 0018 look options: A lightbox, B liquid lake, C macro low angle
+if LOOK == "A":
+    # a backlit violet glass panel: the creature reads as a sharp black silhouette, edges glinting
+    lb = bpy.data.materials.new("Lightbox")
+    lb.use_nodes = True
+    ln = lb.node_tree.nodes
+    ln.clear()
+    lo_ = ln.new("ShaderNodeOutputMaterial")
+    le = ln.new("ShaderNodeEmission")
+    ltc = ln.new("ShaderNodeTexCoord")
+    lg = ln.new("ShaderNodeTexGradient")
+    lg.gradient_type = "SPHERICAL"
+    lmap = ln.new("ShaderNodeMapping")
+    lmap.inputs["Scale"].default_value = (7.0, 7.0, 7.0)
+    lr = ln.new("ShaderNodeValToRGB")
+    lr.color_ramp.elements[0].color = (0.02, 0.005, 0.06, 1)
+    lr.color_ramp.elements[1].color = (0.55, 0.2, 1.0, 1)
+    lb.node_tree.links.new(ltc.outputs["Object"], lmap.inputs["Vector"])
+    lb.node_tree.links.new(lmap.outputs["Vector"], lg.inputs["Vector"])
+    lb.node_tree.links.new(lg.outputs["Fac"], lr.inputs["Fac"])
+    lb.node_tree.links.new(lr.outputs["Color"], le.inputs["Color"])
+    le.inputs["Strength"].default_value = 3.0
+    lb.node_tree.links.new(le.outputs[0], lo_.inputs["Surface"])
+    fl.data.materials.clear()
+    fl.data.materials.append(lb)
+elif LOOK == "B":
+    # a glossy violet liquid lake with slow ripples and a glow from below
+    lake = bpy.data.materials.new("Lake")
+    lake.use_nodes = True
+    kn = lake.node_tree.nodes
+    kb = kn["Principled BSDF"]
+    kb.inputs["Base Color"].default_value = (0.05, 0.01, 0.12, 1)
+    kb.inputs["Roughness"].default_value = 0.03
+    kb.inputs["Coat Weight"].default_value = 1.0
+    kb.inputs["Emission Color"].default_value = (0.35, 0.08, 0.8, 1)
+    kb.inputs["Emission Strength"].default_value = 0.25
+    kw = kn.new("ShaderNodeTexWave")
+    kw.wave_type = "RINGS"
+    kw.inputs["Scale"].default_value = 18.0
+    kw.inputs["Distortion"].default_value = 3.0
+    kbump = kn.new("ShaderNodeBump")
+    kbump.inputs["Strength"].default_value = 0.12
+    lake.node_tree.links.new(kw.outputs["Fac"], kbump.inputs["Height"])
+    lake.node_tree.links.new(kbump.outputs["Normal"], kb.inputs["Normal"])
+    fl.data.materials.clear()
+    fl.data.materials.append(lake)
 fl.location.z = -0.0003
 fl.hide_render = False
 
@@ -144,7 +190,41 @@ def place_jumpers(fr):
             jd.location = (0, 0, -1)
 
 
+# 0018: polished steel beads the creature eats
+chrome = principled("Chrome", (0.92, 0.92, 0.95), metal=1.0, rough=0.06)
+if LOOK == "A":  # glowing glass marbles on the lightbox
+    chrome = principled("GlassMarble", (0.85, 0.75, 1.0), rough=0.0)
+    chrome.node_tree.nodes["Principled BSDF"].inputs["Transmission Weight"].default_value = 1.0
+    chrome.node_tree.nodes["Principled BSDF"].inputs["Emission Color"].default_value = (0.4, 0.85, 1.0, 1)
+    chrome.node_tree.nodes["Principled BSDF"].inputs["Emission Strength"].default_value = 0.6
+BEADS = []
+for i in range(14):
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=48, ring_count=24, radius=1.0)
+    bo = bpy.context.active_object
+    bo.data.materials.append(chrome)
+    bpy.ops.object.shade_smooth()
+    lit.objects.link(bo)
+    bo.scale = (0, 0, 0)
+    BEADS.append(bo)
+
+
+def place_beads(fr):
+    bl = fr.get("beads", [])
+    for i, bo in enumerate(BEADS):
+        if i < len(bl):
+            x, y, z, r = bl[i]
+            bo.location = (x, y, z)
+            bo.scale = (r, r, r)
+        else:
+            bo.scale = (0, 0, 0)
+            bo.location = (0, 0, -1)
+
+
 def place_drops(fr, t):
+    if fr.get("noDrops"):
+        for dr in DROPS:
+            dr["o"].scale = (0, 0, 0)
+        return
     bl = np.array(fr["blobs"], dtype=np.float64)
     mx = (bl[:, 0] * bl[:, 2]).sum() / bl[:, 2].sum()
     my = (bl[:, 1] * bl[:, 2]).sum() / bl[:, 2].sum()
@@ -194,6 +274,12 @@ def heights(fr, t):
     wob = 1 + 0.03 * np.sin(np.arctan2(Y, X) * 3 + 0.7 * t)  # a living, slightly uneven outline
     e = np.clip((F * wob - 0.45) / 0.18, 0, 1)
     pool = 0.0028 * np.sqrt(e) * (0.75 + 0.25 * np.clip(F, 0, 1)) - 0.0012 * (1 - e)
+    if os.environ.get("FERRO_DOME", "1") == "1":
+        # 0018 (owner: "it looks like a biscuit"): a round, domed body - a living spiky sphere sitting on the surface
+        rb = bl[owner, 2]
+        dd = np.hypot(X - bl[owner, 0], Y - bl[owner, 1]) / np.maximum(rb, 1e-6)
+        dome = 0.62 * rb * np.clip(1 - (dd / 0.95) ** 2, 0, 1) ** 0.8  # a rounded spiky hill, smooth into its edge
+        pool = pool + dome * e
     cx, cy = bl[owner, 0], bl[owner, 1]
     sx, sy, dmin = hex_nearest(X - cx, Y - cy)
     sr = np.hypot(sx, sy)
@@ -234,9 +320,112 @@ def heights(fr, t):
     return pool + dome + spike + rip, spike, amp, sx, sy, sr, shape, prof
 
 
+# ---------------- 0018 SPHERE MODE (owner, Nov 15: "it looks like a biscuit" -> a full spiky sphere) ----------------
+# The creature is a floating ball of ferrofluid covered in Rosensweig spikes (an icosphere displaced along its own
+# normals). It ROLLS as it moves (spikes ride round with it), shoots a spike-arm at the bead it wants, ripples with a
+# heartbeat wave over its surface, bristles with long spikes for the crown, and splits into two smaller spheres.
+SPHERE = os.environ.get("FERRO_SPHERE", "0") == "1"
+if SPHERE:
+    fluid.hide_render = True
+    SPH = []
+    for _ in range(2):
+        bpy.ops.mesh.primitive_ico_sphere_add(subdivisions=7, radius=1.0)
+        so = bpy.context.active_object
+        so.data.materials.append(ferro)
+        bpy.ops.object.shade_smooth()
+        lit.objects.link(so)
+        SPH.append(so)
+    _nv = len(SPH[0].data.vertices)
+    SU = np.empty(_nv * 3)
+    SPH[0].data.vertices.foreach_get("co", SU)
+    SU = SU.reshape(-1, 3)
+    SU /= np.linalg.norm(SU, axis=1, keepdims=True)
+    # spike sites: a fibonacci lattice on the sphere
+    NS = 420
+    _g = math.pi * (3 - math.sqrt(5))
+    SITES = []
+    for i in range(NS):
+        yy = 1 - (i + 0.5) / NS * 2
+        rr_ = math.sqrt(1 - yy * yy)
+        SITES.append((math.cos(_g * i) * rr_, math.sin(_g * i) * rr_, yy))
+    SITES = np.array(SITES)
+    _dots = SU @ SITES.T
+    S_NEAR = np.argmax(_dots, axis=1)
+    S_ANG = np.arccos(np.clip(_dots[np.arange(_nv), S_NEAR], -1, 1))
+    del _dots
+    S_W = 0.115  # angular half-width of a spike base
+    _c = np.clip(1 - S_ANG / S_W, 0, 1)
+    S_PROF = _c ** 2.4 * (3 - 2 * _c) * 0.55 + _c ** 7 * 0.45
+    S_VAR = 0.7 + 0.6 * np.mod(np.sin(np.arange(NS) * 12.9898) * 43758.5453, 1.0)
+
+    # rolling: integrate the body's motion into a rotation (deterministic, from the frame data)
+    ROT = []
+    q = mathutils.Quaternion()
+    prev = None
+    for fr_ in spec["frames"]:
+        b0 = fr_["blobs"][0]
+        p = np.array(b0[:2])
+        if prev is not None:
+            v = p - prev
+            d = float(np.linalg.norm(v))
+            if d > 1e-7:
+                ax = mathutils.Vector((-v[1], v[0], 0.0)).normalized()
+                q = mathutils.Quaternion(ax, d / max(b0[2], 1e-4)) @ q
+        prev = p
+        ROT.append(q.copy())
+
+    def sphere_frame(fr, f, t):
+        bl = np.array(fr["blobs"], dtype=np.float64)
+        Rmax = float(np.max(bl[:, 2]))
+        bodies = [b for b in bl if b[2] >= 0.72 * Rmax][:2]
+        arms = [b for b in bl if b[2] < 0.72 * Rmax]
+        rot = np.array(ROT[f].to_matrix())
+        # heartbeat: a wave that runs from the top of the ball to the bottom
+        theta = np.arccos(np.clip(SITES[:, 2], -1, 1))
+        amp = np.full(NS, 0.16)
+        for ring in fr["rings"]:
+            if ring[0] == -1:
+                front = ring[1] / 0.06 * math.pi
+                amp += (ring[2] / 0.012) * 0.55 * np.exp(-((theta - front) / 0.35) ** 2)
+        amp += 0.12 * np.sin(np.arange(NS) * 1.7 + t * 2.3) ** 2 * 0.5  # never perfectly still
+        amp += 0.75 * fr["crown"] * (0.6 + 0.4 * SITES[:, 2])  # the crown: it bristles all over, longest on top
+        amp *= S_VAR
+        for i, so in enumerate(SPH):
+            if i >= len(bodies):
+                so.scale = (0, 0, 0)
+                continue
+            cx, cy, R = bodies[i]
+            dirs = SU @ rot.T  # the spikes roll with the ball
+            rad = 1.0 + (amp[S_NEAR] * S_PROF) * 0.55
+            # spike-arm: a long tentacle of fluid toward the bead it wants
+            for a in arms:
+                v = np.array([a[0] - cx, a[1] - cy, -0.08 * R])  # the arm reaches out, low over the lake
+                L = np.linalg.norm(v)
+                if L < 1e-6:
+                    continue
+                v /= L
+                reach = a[2] / (0.55 * R)
+                ang = np.arccos(np.clip(dirs @ v, -1, 1))
+                rad = rad + 1.1 * reach * np.exp(-(ang / 0.32) ** 2)
+            co = dirs * rad[:, None]
+            so.data.vertices.foreach_set("co", co.astype(np.float32).ravel())
+            so.data.update()
+            so.location = (cx, cy, R * 1.02 + 0.002 + (fr.get("hop", 0.0) if i == 0 else 0.0))
+            so.scale = (R, R, R)
+            so.rotation_euler = (0, 0, 0)
+
+
 def frame(f):
     fr = spec["frames"][f]
     t = f / spec["fps"]
+    if SPHERE:
+        sphere_frame(fr, f, t)
+    else:
+        frame_fluid(fr, f, t)
+    frame_rest(fr, f, t)
+
+
+def frame_fluid(fr, f, t):
     z, spike, amp, sx, sy, sr, shape, prof = heights(fr, t)
     # sway: compare with the heights a moment ago (deterministic: computed, not remembered)
     _, _, amp_prev, _, _, _, _, _ = heights(spec["frames"][max(0, f - 2)], (f - 2) / spec["fps"])
@@ -244,6 +433,8 @@ def frame(f):
     ux = np.where(sr > 1e-6, sx / np.maximum(sr, 1e-6), 0)
     uy = np.where(sr > 1e-6, sy / np.maximum(sr, 1e-6), 0)
     lean_r = 0.05 + 0.12 * np.clip(sr / 0.04, 0, 1) ** 2
+    if os.environ.get("FERRO_DOME", "1") == "1":
+        lean_r = lean_r + 0.75 * np.clip(sr / (0.95 * np.max(np.array(fr["blobs"])[:, 2])), 0, 1) ** 1.5  # spikes follow the curve of the dome
     lx, ly = fr["lean"]
     c = co0.copy()
     c[:, 0] = X + (lean_r * ux + lx) * spike + sway * shape * prof ** 2 * ux
@@ -251,8 +442,12 @@ def frame(f):
     c[:, 2] = z
     fluid.data.vertices.foreach_set("co", c.astype(np.float32).ravel())
     fluid.data.update()
+
+
+def frame_rest(fr, f, t):
     place_drops(fr, t)
     place_jumpers(fr)
+    place_beads(fr)
     for em_ in NEON_EM:  # the creature glows a little on every heartbeat
         em_.inputs["Strength"].default_value = 12.0 * fr.get("glow", 1.0)
     for name, (o, p0) in LIGHTS.items():
@@ -263,6 +458,11 @@ def frame(f):
     LIGHTS["Cyan"][0].data.color = fr["lightA"]
     LIGHTS["Magenta"][0].data.color = fr["lightB"]
     yaw, d, tilt = fr["yaw"], fr["dist"], fr["tilt"]
+    if LOOK == "A":
+        tilt, d = math.radians(12), d * 1.15  # nearly top-down over the lightbox
+    elif LOOK == "C":
+        tilt, d = math.radians(72), d * 0.85  # table-height macro
+        cd.dof.aperture_fstop = 8.0
     lx_, ly_, lz_ = fr["look"]
     cam.location = (lx_ + math.sin(yaw) * d * math.sin(tilt), ly_ - math.cos(yaw) * d * math.sin(tilt), lz_ + d * math.cos(tilt))
     cam.rotation_euler = (tilt, 0, yaw)
