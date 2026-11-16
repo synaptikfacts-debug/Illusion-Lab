@@ -63,6 +63,83 @@ if LOOK == "A":
     lb.node_tree.links.new(le.outputs[0], lo_.inputs["Surface"])
     fl.data.materials.clear()
     fl.data.materials.append(lb)
+elif LOOK == "D":
+    smoke = principled("SmokyGlass", (0.006, 0.02, 0.016), rough=0.07, coat=1.0)
+    fl.data.materials.clear()
+    fl.data.materials.append(smoke)
+    # city lights far behind: bright round dots in violet / cyan / white, thrown into soft bokeh by the lens
+    # the glass table ends just behind the creature, so the camera sees the city lights themselves (not only their reflection)
+    fl.scale = (0.3, 0.16, 1)
+    fl.location.y = -0.04
+    bpy.ops.mesh.primitive_plane_add(size=1.0, location=(0, 0.78, -0.2), rotation=(math.radians(90), 0, 0))
+    city = bpy.context.active_object
+    city.scale = (2.0, 1.2, 1)
+    cm_ = bpy.data.materials.new("CityLights")
+    cm_.use_nodes = True
+    cn_ = cm_.node_tree.nodes
+    cn_.clear()
+    co_ = cn_.new("ShaderNodeOutputMaterial")
+    ce_ = cn_.new("ShaderNodeEmission")
+    ctc = cn_.new("ShaderNodeTexCoord")
+    cvo = cn_.new("ShaderNodeTexVoronoi")
+    cvo.inputs["Scale"].default_value = 16.0
+    cvr = cn_.new("ShaderNodeValToRGB")
+    cvr.color_ramp.elements[0].position = 0.0
+    cvr.color_ramp.elements[0].color = (1, 1, 1, 1)
+    cvr.color_ramp.elements[1].position = 0.09
+    cvr.color_ramp.elements[1].color = (0, 0, 0, 1)
+    ccol = cn_.new("ShaderNodeValToRGB")  # each light gets its own colour from the cell id
+    ccol.color_ramp.elements[0].color = (0.05, 1.0, 0.45, 1)
+    _m = ccol.color_ramp.elements.new(0.5)
+    _m.color = (0.0, 0.85, 0.8, 1)
+    ccol.color_ramp.elements[1].color = (0.85, 1.0, 0.95, 1)
+    cmul = cn_.new("ShaderNodeMixRGB")
+    cmul.blend_type = "MULTIPLY"
+    cmul.inputs["Fac"].default_value = 1.0
+    cglow = cn_.new("ShaderNodeTexGradient")  # a soft violet haze behind the lights so nothing is flat black
+    cgmap = cn_.new("ShaderNodeMapping")
+    cgmap.inputs["Scale"].default_value = (1.0, 2.0, 1.0)
+    cgr = cn_.new("ShaderNodeValToRGB")
+    cgr.color_ramp.elements[0].color = (0.0, 0.002, 0.0015, 1)
+    cgr.color_ramp.elements[1].color = (0.0, 0.03, 0.022, 1)  # a faint haze: the bright lights carry the colour
+    cadd = cn_.new("ShaderNodeMixRGB")
+    cadd.blend_type = "ADD"
+    cadd.inputs["Fac"].default_value = 1.0
+    L_ = cm_.node_tree.links
+    L_.new(ctc.outputs["Object"], cvo.inputs["Vector"])
+    L_.new(cvo.outputs["Distance"], cvr.inputs["Fac"])
+    L_.new(cvo.outputs["Color"], ccol.inputs["Fac"])
+    L_.new(cvr.outputs["Color"], cmul.inputs[1])
+    L_.new(ccol.outputs["Color"], cmul.inputs[2])
+    L_.new(ctc.outputs["Object"], cgmap.inputs["Vector"])
+    L_.new(cgmap.outputs["Vector"], cglow.inputs["Vector"])
+    L_.new(cglow.outputs["Fac"], cgr.inputs["Fac"])
+    L_.new(cmul.outputs["Color"], cadd.inputs[1])
+    L_.new(cgr.outputs["Color"], cadd.inputs[2])
+    L_.new(cadd.outputs["Color"], ce_.inputs["Color"])
+    ce_.inputs["Strength"].default_value = 18.0
+    L_.new(ce_.outputs[0], co_.inputs["Surface"])
+    city.data.materials.append(cm_)
+    city.visible_shadow = False
+    # real light points far behind (emissive spheres) - the lens throws them into round bokeh
+    city.hide_render = False  # keeps a faint emerald haze behind the bokeh
+    _rng = np.random.default_rng(1919)
+    _cols = [(0.05, 1.0, 0.45), (0.0, 0.85, 0.8), (0.85, 1.0, 0.95), (0.2, 0.9, 0.6)]
+    for _i in range(240):
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=16, ring_count=8, radius=_rng.uniform(0.002, 0.006),
+                                             location=(_rng.uniform(-0.5, 0.5), _rng.uniform(0.2, 0.6), _rng.uniform(-0.28, 0.03)))  # in view beyond the table edge
+        _b = bpy.context.active_object
+        _bm = bpy.data.materials.new(f"Bokeh{_i}")
+        _bm.use_nodes = True
+        _bn = _bm.node_tree.nodes
+        _bn.clear()
+        _be = _bn.new("ShaderNodeEmission")
+        _be.inputs["Color"].default_value = (*_cols[_i % 4], 1)
+        _be.inputs["Strength"].default_value = _rng.uniform(12, 40)
+        _bo = _bn.new("ShaderNodeOutputMaterial")
+        _bm.node_tree.links.new(_be.outputs[0], _bo.inputs["Surface"])
+        _b.data.materials.append(_bm)
+        _b.visible_shadow = False
 elif LOOK == "B":
     # a glossy violet liquid lake with slow ripples and a glow from below
     lake = bpy.data.materials.new("Lake")
@@ -86,6 +163,9 @@ elif LOOK == "B":
     fl.data.materials.append(lake)
 fl.location.z = -0.0003
 fl.hide_render = False
+if LOOK == "D":
+    fl.scale = (0.3, 0.16, 1)
+    fl.location.y = -0.04
 
 # --- a bigger, finer fluid sheet so the creature can travel ---
 bpy.data.objects.remove(fluid, do_unlink=True)
@@ -114,10 +194,15 @@ for o in scene.objects:
 # --- BRILLIANT colour (owner, Nov 11: "rich, colourful, brilliant"): the ferrofluid is a black mirror, so its colour is
 # what it reflects - a ring of big neon panels, hidden from the camera, mirrored in every spike and droplet ---
 NEON_EM = []
-NEON = [
+NEON_PURPLE = [
     ((0.0, 1.0, 0.95), 0), ((1.0, 0.05, 0.65), 1), ((0.55, 0.15, 1.0), 2), ((0.1, 0.35, 1.0), 3),
     ((1.0, 0.2, 0.95), 4), ((0.0, 0.8, 1.0), 5), ((0.75, 0.0, 1.0), 6), ((1.0, 0.1, 0.4), 7),
 ]
+NEON_EMERALD = [
+    ((0.0, 1.0, 0.5), 0), ((0.0, 0.85, 0.85), 1), ((0.75, 1.0, 0.9), 2), ((0.1, 0.65, 0.4), 3),
+    ((0.0, 1.0, 0.7), 4), ((0.5, 1.0, 0.95), 5), ((0.0, 0.6, 0.5), 6), ((0.9, 1.0, 1.0), 7),
+]
+NEON = NEON_EMERALD if LOOK == "D" else NEON_PURPLE  # 0019 emerald (owner: new colours)
 for col, i in NEON:
     ang = i / len(NEON) * 2 * math.pi + 0.2
     bpy.ops.mesh.primitive_plane_add(size=1.0)
@@ -142,11 +227,13 @@ for col, i in NEON:
 _bd = bpy.data.materials["Backdrop"].node_tree.nodes
 for n_ in _bd:
     if n_.type == "VALTORGB":
-        n_.color_ramp.elements[1].color = (0.55, 0.06, 1.0, 1)
+        n_.color_ramp.elements[1].color = (0.0, 0.35, 0.25, 1) if LOOK == "D" else (0.55, 0.06, 1.0, 1)
     if n_.type == "EMISSION":
         n_.inputs["Strength"].default_value = 2.2
 
-LIGHTS["Top"][0].data.color = (0.7, 0.45, 1.0)  # no white highlights: every highlight carries colour
+LIGHTS["Top"][0].data.color = (0.75, 1.0, 0.9) if LOOK == "D" else (0.7, 0.45, 1.0)
+if LOOK == "D":
+    bk.hide_render = True  # the flat glow wall hid the city lights and read as an edge band  # no white highlights: every highlight carries colour
 LIGHTS["Top"][0].data.energy *= 0.6
 
 spec = json.load(open(os.path.join(DATA, "frames.json")))
@@ -167,7 +254,7 @@ for i in range(34):
 
 
 JUMP = []
-for i in range(26):
+for i in range(int(os.environ.get("FERRO_JUMPERS", "26"))):
     bpy.ops.mesh.primitive_uv_sphere_add(segments=32, ring_count=16, radius=1.0)
     jd = bpy.context.active_object
     jd.data.materials.append(ferro)
@@ -278,7 +365,7 @@ def heights(fr, t):
         # 0018 (owner: "it looks like a biscuit"): a round, domed body - a living spiky sphere sitting on the surface
         rb = bl[owner, 2]
         dd = np.hypot(X - bl[owner, 0], Y - bl[owner, 1]) / np.maximum(rb, 1e-6)
-        dome = 0.62 * rb * np.clip(1 - (dd / 0.95) ** 2, 0, 1) ** 0.8  # a rounded spiky hill, smooth into its edge
+        dome = float(os.environ.get("FERRO_DOMEH", "1")) * 0.62 * rb * np.clip(1 - (dd / 0.95) ** 2, 0, 1) ** 0.8  # a rounded spiky hill, smooth into its edge
         pool = pool + dome * e
     cx, cy = bl[owner, 0], bl[owner, 1]
     sx, sy, dmin = hex_nearest(X - cx, Y - cy)
@@ -315,6 +402,9 @@ def heights(fr, t):
     es = np.clip((np.exp(-((sr / bl[owner, 2]) ** 4)) - 0.4) / 0.25, 0, 1)
     spike = amp * shape * e * es
     dome = 0.011 * fr["crown"] * np.exp(-((sr / 0.016) ** 2)) * e
+    if fr.get("tower", 0) > 1e-5:
+        rr_t = np.hypot(X - bl[0, 0], Y - bl[0, 1])
+        dome = dome + fr["tower"] * np.exp(-((rr_t / 0.011) ** 2)) ** 0.7 * e
     # fine ripples running over the liquid between the spikes
     rip = 0.00016 * e * (np.sin(820 * (X * 0.8 + Y * 0.6) - 7.0 * t) + np.sin(640 * (X * -0.5 + Y * 0.86) - 5.3 * t + 1.7))
     return pool + dome + spike + rip, spike, amp, sx, sy, sr, shape, prof
@@ -460,6 +550,8 @@ def frame_rest(fr, f, t):
     yaw, d, tilt = fr["yaw"], fr["dist"], fr["tilt"]
     if LOOK == "A":
         tilt, d = math.radians(12), d * 1.15  # nearly top-down over the lightbox
+    elif LOOK == "D":
+        cd.dof.aperture_fstop = 5.6
     elif LOOK == "C":
         tilt, d = math.radians(72), d * 0.85  # table-height macro
         cd.dof.aperture_fstop = 8.0
@@ -467,6 +559,8 @@ def frame_rest(fr, f, t):
     cam.location = (lx_ + math.sin(yaw) * d * math.sin(tilt), ly_ - math.cos(yaw) * d * math.sin(tilt), lz_ + d * math.cos(tilt))
     cam.rotation_euler = (tilt, 0, yaw)
     cd.dof.focus_distance = d
+    if os.environ.get("FERRO_PROBE"):
+        exec(open(os.environ["FERRO_PROBE"]).read())
     scene.render.filepath = os.path.join(OUT, f"f_{f:04d}.png")
     bpy.ops.render.render(write_still=True)
 

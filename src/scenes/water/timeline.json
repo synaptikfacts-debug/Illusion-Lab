@@ -1,0 +1,20 @@
+{
+  "_": "0020 This water falls upward - STORY time beats (s). Real time: cold open (story 10.6-11.6), fast rewind to story 1.8, then story at speed 1.15. scripts/blender/water_up.py writes events.json (landings) for the sound.",
+  "storyEnd": 19.5,
+  "speed": 1.15,
+  "cold": 1.0,
+  "rewind": 0.8,
+  "rewindTo": 1.8,
+  "coldFrom": 10.6,
+  "bulge": [2.3, 3.0],
+  "rise": [2.8, 11.0],
+  "braid": [6.2, 8.2],
+  "hit": 11.0,
+  "tailUp": [11.0, 12.6],
+  "rain": [12.4, 15.2],
+  "refill": [13.0, 16.5],
+  "fade": [17.6, 19.4],
+  "glassH": 0.1,
+  "glassR": 0.034,
+  "ceiling": 0.42
+}

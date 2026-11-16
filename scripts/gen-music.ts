@@ -22,7 +22,11 @@ import { generatePinShowMusic } from "./gen-music-pinshow";
 import { generateFerroMusic } from "./gen-music-ferromusic";
 import { generateUrchinMusic } from "./gen-music-urchin";
 import { generateShellMusic } from "./gen-music-shell";
+import { generateCosmosMusic } from "./gen-music-cosmos";
+import { generateClimbMusic } from "./gen-music-climb";
 import { generateHungryMusic } from "./gen-music-hungry";
+import { generateHeartbeatMusic } from "./gen-music-heartbeat";
+import { generateWaterMusic } from "./gen-music-water";
 
 // key of F: Fmaj7, Am7, Dm9, Bbmaj9 ... ending on Csus4, which resolves into Fmaj7 at the loop point
 const CHORDS: { root: number; tones: number[] }[] = [
@@ -48,7 +52,11 @@ export function generateMusic(reel: Reel): string {
   if (cfg.style === "ferromusic") return generateFerroMusic(reel);
   if (cfg.style === "urchin") return generateUrchinMusic(reel);
   if (cfg.style === "shell") return generateShellMusic(reel);
+  if (cfg.style === "cosmos") return generateCosmosMusic(reel);
+  if (cfg.style === "climb") return generateClimbMusic(reel);
   if (cfg.style === "hungry") return generateHungryMusic(reel);
+  if (cfg.style === "heartbeat") return generateHeartbeatMusic(reel);
+  if (cfg.style === "water") return generateWaterMusic(reel);
   const tl = timeline(reel);
   const total = tl.total / tl.fps;
   const bpm = cfg.bpm > 90 ? 72 : cfg.bpm; // calm by default

@@ -64,6 +64,10 @@ scene.world = bpy.data.worlds.new("World")
 scene.world.use_nodes = True
 wn = scene.world.node_tree.nodes
 wn["Background"].inputs["Color"].default_value = (0.006, 0.004, 0.016, 1)
+if os.environ.get("PIN_PALETTE") == "crimson":
+    wn["Background"].inputs["Color"].default_value = (0.012, 0.004, 0.005, 1)
+elif os.environ.get("PIN_PALETTE") == "ice":
+    wn["Background"].inputs["Color"].default_value = (0.004, 0.008, 0.016, 1)
 wn["Background"].inputs["Strength"].default_value = 1.0
 
 
@@ -78,12 +82,23 @@ def setp(b, key, v):
         b.inputs[key].default_value = v
 
 
+# palette override for new reels (PIN_PALETTE): crimson = ivory porcelain pins, crimson->rose->pearl tips;
+# ice = satin silver pins, deep ink-blue->ice->white tips. Default = the 0011 look.
+PAL = os.environ.get("PIN_PALETTE", "")
+PAL_STOPS = {"crimson": [(0.35, 0.02, 0.06), (0.85, 0.06, 0.16), (1.0, 0.45, 0.55), (1.0, 0.9, 0.9)],
+             "ice": [(0.02, 0.06, 0.2), (0.15, 0.45, 0.9), (0.65, 0.88, 1.0), (1.0, 1.0, 1.0)]}.get(PAL)
+PAL_GLOW = {"crimson": (0.45, 0.03, 0.08, 1), "ice": (0.08, 0.2, 0.45, 1)}.get(PAL)
 # shafts: brushed steel
 m_shaft, b = mat("Steel")
 setp(b, "Base Color", (0.56, 0.58, 0.64, 1))
 setp(b, "Metallic", 1.0)
 setp(b, "Roughness", 0.3)
 setp(b, "Anisotropic", 0.6)
+if PAL == "crimson":  # ivory porcelain
+    setp(b, "Base Color", (0.86, 0.82, 0.76, 1))
+    setp(b, "Metallic", 0.0)
+    setp(b, "Roughness", 0.22)
+    setp(b, "Coat Weight", 1.0)
 # tips: glossy coated beads, coloured by height, soft inner glow
 m_tip, b = mat("Tip")
 attr = m_tip.node_tree.nodes.new("ShaderNodeAttribute")
@@ -109,7 +124,7 @@ mp.inputs["Scale"].default_value = (0.11, 0.11, 0.11)
 gr = fn.new("ShaderNodeTexGradient")
 gr.gradient_type = "SPHERICAL"
 em = fn.new("ShaderNodeEmission")
-em.inputs["Color"].default_value = (0.22, 0.1, 0.55, 1)
+em.inputs["Color"].default_value = PAL_GLOW or (0.22, 0.1, 0.55, 1)
 mul = fn.new("ShaderNodeMath")
 mul.operation = "POWER"
 mul.inputs[1].default_value = 2.2
@@ -142,7 +157,8 @@ def obj_from(name, verts, faces, material, smooth):
 
 
 # --- shafts: 4096 cylinders in one mesh (12 sides); top ring z follows the pin height ---
-R = SP * 0.33
+ORBS = os.environ.get("PIN_STYLE") == "orbs"  # 0021 (owner: not pins, not the same mesh): free-floating frosted ice beads
+R = SP * (0.46 if ORBS else 0.33)
 SEG = 12
 ang = np.linspace(0, 2 * np.pi, SEG, endpoint=False)
 ring = np.stack([np.cos(ang) * R * 0.7, np.sin(ang) * R * 0.7], 1)
@@ -174,22 +190,76 @@ for vi in range(VL):
         b2 = vi * UL + (ui + 1) % UL
         tfs.append([a, b2, b2 + UL, a + UL])
 tfs = np.array(tfs)
+if os.environ.get("PIN_SHAPE") == "crystal":
+    # 0021 (owner: a different object): a double-pointed hexagonal ice crystal instead of a bead, every face a quad
+    # (degenerate quads at the points) so the mesh layout stays the same for every object
+    tv, tq = [], []
+    H_, W_ = R * 1.9, R * 0.62
+    for zz, ww in ((-H_, 0.0), (-H_ * 0.45, W_), (H_ * 0.45, W_), (H_, 0.0)):
+        for k in range(6):
+            ang_ = math.pi / 3 * k
+            tv.append([ww * math.cos(ang_), ww * math.sin(ang_), zz])
+    for ring_ in range(3):
+        for k in range(6):
+            a_, b_ = ring_ * 6 + k, ring_ * 6 + (k + 1) % 6
+            tq.append([a_, b_, b_ + 6, a_ + 6])
+    tv = np.array(tv, np.float32)
+    tfs = np.array(tq)
 nv = len(tv)
 tip_v = np.zeros((NP, nv, 3), np.float32)
 tip_v[:, :, 0] = BX[:, None] + tv[None, :, 0]
 tip_v[:, :, 1] = BY[:, None] + tv[None, :, 1]
 tip_f = (tfs[None, :, :] + (np.arange(NP) * nv)[:, None, None]).reshape(-1, 4)
-tips, tip_me = obj_from("Tips", tip_v.reshape(-1, 3), tip_f, m_tip, True)
+tips, tip_me = obj_from("Tips", tip_v.reshape(-1, 3), tip_f, m_tip, os.environ.get("PIN_SHAPE") != "crystal")  # crystals keep sharp facets
 col_attr = tip_me.color_attributes.new("col", "FLOAT_COLOR", "POINT")
 
 # --- floor + plate ---
 bpy.ops.mesh.primitive_plane_add(size=60, location=(0, 0, -0.002))
 bpy.context.object.data.materials.append(m_floor)
 half = (64 * SP) / 2 + 0.25
-bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, -0.03))
-plate = bpy.context.object
-plate.scale = (half * 2, half * 2, 0.06)
+if os.environ.get("PIN_DISC"):  # 0021: a round base under a round disc of pins
+    _R = float(np.max(np.hypot(P[:, 0], P[:, 1]))) + 0.18
+    bpy.ops.mesh.primitive_cylinder_add(vertices=256, radius=_R, depth=0.06, location=(0, 0, -0.03))
+    plate = bpy.context.object
+else:
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, -0.03))
+    plate = bpy.context.object
+    plate.scale = (half * 2, half * 2, 0.06)
 plate.data.materials.append(m_plate)
+if ORBS:
+    shafts.hide_render = True
+    plate.hide_render = True
+    for _o in bpy.data.objects:
+        if _o.name.startswith("Plane"):
+            _o.hide_render = True  # no floor: the beads float in the air
+    # frosted ice glass: refractive, slightly rough, lit from inside by its height colour
+    bt = m_tip.node_tree.nodes["Principled BSDF"]
+    bt.inputs["Transmission Weight"].default_value = 1.0
+    bt.inputs["IOR"].default_value = 1.31
+    bt.inputs["Roughness"].default_value = 0.03 if os.environ.get("PIN_SHAPE") == "crystal" else 0.12
+    bt.inputs["Metallic"].default_value = 0.0
+    bt.inputs["Coat Weight"].default_value = 1.0
+    bt.inputs["Coat Roughness"].default_value = 0.02
+    bt.inputs["Emission Strength"].default_value = 0.55
+    # deep blue haze far behind, with soft bokeh lights so no edge is flat
+    scene.world.node_tree.nodes["Background"].inputs["Color"].default_value = (0.004, 0.012, 0.035, 1)
+    _rng = np.random.default_rng(2121)
+    _cols = [(0.3, 0.6, 1.0), (0.7, 0.9, 1.0), (0.1, 0.35, 0.9), (1.0, 1.0, 1.0)]
+    for _i in range(160):
+        bpy.ops.mesh.primitive_uv_sphere_add(segments=12, ring_count=6, radius=_rng.uniform(0.25, 0.6),
+                                             location=(_rng.uniform(-30, 30), _rng.uniform(-30, 30), _rng.uniform(-25, -8)))
+        _b = bpy.context.active_object
+        _bm = bpy.data.materials.new(f"Bokeh{_i}")
+        _bm.use_nodes = True
+        _bn = _bm.node_tree.nodes
+        _bn.clear()
+        _be = _bn.new("ShaderNodeEmission")
+        _be.inputs["Color"].default_value = (*_cols[_i % 4], 1)
+        _be.inputs["Strength"].default_value = _rng.uniform(3, 9)
+        _bo = _bn.new("ShaderNodeOutputMaterial")
+        _bm.node_tree.links.new(_be.outputs[0], _bo.inputs["Surface"])
+        _b.data.materials.append(_bm)
+        _b.visible_shadow = False
 
 
 # --- lights ---
@@ -249,6 +319,8 @@ def frame(f):
     t[:, :, 2] = hh[:, None] + tv[None, :, 2]
     tip_me.vertices.foreach_set("co", t.reshape(-1))
     x = h / MAXH
+    if PAL_STOPS:
+        fr = dict(fr, stops=PAL_STOPS)
     c = srgb_to_lin(grad(fr["stops"], x)) * (0.5 + 0.45 * x)[:, None]
     rgba = np.concatenate([c, np.ones((NP, 1), np.float32)], 1)
     rgba = np.repeat(rgba[:, None, :], nv, 1).reshape(-1)

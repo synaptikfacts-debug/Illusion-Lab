@@ -22,9 +22,12 @@ and is archived in reels/archive/.
 
 ## RULE: sound (owner, Nov 9 2026; updated Nov 10 2026)
 - EVERY version has sound effects synced to the motion. Never silent.
-- MUSIC ON EVERY PLATFORM (owner, Nov 10: the 0004 YouTube mix "was really good"): YouTube, Instagram, TikTok,
-  Facebook and X all get the same SFX + in-house story score (platforms.ts `music: true` everywhere). The old
-  "no music on IG/TT" rule is replaced.
+- TWO VIDEOS PER REEL (owner, Nov 16 2026 - replaces the Nov 15 per-platform rule): deliver exactly 2 files -
+  (1) the YouTube Short: SFX + the in-house story score; (2) ONE sounds-only file the owner posts on TikTok,
+  Instagram, Facebook AND X (the owner adds music inside those apps). Set in config/platforms.ts (`music: true` only
+  for youtube). Hand the owner just these two (+ thumbnails and texts), not five exports.
+- SFX are creamy, muted THOCKS (the 0011 Singing Pins thock: low sine body with a slight pitch drop + a felted
+  low-passed puff); no bright clicks or woodblocks.
 - Music: CALM, satisfying, real sampled instruments (felt piano, strings, harp, pizzicato, glockenspiel), written to
   the story beats and resolving on the ending (scripts/gen-music-story.ts style). Never synth grooves ("cringe, AI slop").
 - SFX style: calm and satisfying, from the simulation's own events, real recorded samples.
@@ -91,11 +94,25 @@ Keep the reference's CORE IDEA and mechanic (e.g. thousands of glossy orbs bounc
 shapes, a click per bounce). Make only the look ours: colours, plate/stage, camera, hook and ending. Do NOT swap in
 a different mechanic (Galton board, sand, liquid were all rejected as "nothing to do with the one I sent").
 
+## RULE: THE SWIPE TEST - be the stranger in the feed (owner, Nov 15 2026, on 0021 v1: "pretend you are the watcher,
+## will you watch this or swipe immediately? I am 100% sure you will swipe")
+Before sending ANY still or preview, watch it as a stranger scrolling Shorts/Reels with the sound on, and answer in
+writing, honestly, in the message: "Would I stop and watch, or swipe?" If the honest answer is swipe, do not send it -
+fix it first. It fails (= swipe) if ANY of these is true:
+- the first 0.5 s is not the most striking image of the reel, or nothing dramatic happens in it;
+- it looks cheap, CG or "AI slop": plain white/grey untextured objects, flat even lighting, thousands of tiny identical
+  dots, a flat noise backdrop, glows that look pasted on;
+- the materials don't carry the colour of the scene (objects must reflect/refract their world - e.g. in space, chrome
+  and glass full of nebula colour, never plain white balls);
+- the theme the owner asked for (e.g. "cosmic / space colours") is not obvious in the very first frame;
+- it does not look like a professional studio render: one strong key light, deep blacks, rich colour, real depth.
+Say which of these you checked and what you changed. The owner should never have to point these out.
+
 ## RULE: OWNER CHECKLIST - run it on the key stills BEFORE every preview (owner, Nov 15 2026: "remember everything I
 ## said, don't make me fix your mistakes every time and waste credits")
 - HOOK: frame 0 is the climax/most striking moving image, a dramatic event within 0.5 s (cold open + fast rewind works);
   something new every 1-2 s; honestly ask "would I swipe?".
-- LOOK: ultra realistic (Blender Cycles), bright enough to see everything, rich purple + small cyan, no brown/orange;
+- LOOK: ultra realistic (Blender Cycles), bright enough to see everything, a NEW palette every reel (0012-0018 were purple/cyan, 0019 emerald) - no brown/orange;
   no cheap/AI-looking glows; subjects are full 3D forms; every reel looks different from the last one.
 - FRAMING: subject centred and fully in frame all the time; camera pulls back as things grow/spread; never blurry.
 - SOUND: creamy, muted, soft thocks tied to visible events; no bright clicks/woodblocks, no noise beds, never childish.

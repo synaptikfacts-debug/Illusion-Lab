@@ -1,0 +1,20 @@
+{
+  "_": "0021 The Break, 60 s (owner Nov 16 2026: 'around a minute') - real-time beats (s) of scripts/blender/cosmos_break.py. SFX play the simulation's own collision log (src/scenes/cosmos/break_events.json); these beats drive the YouTube score.",
+  "duration": 60.0,
+  "impact": 0.35,
+  "slowmo": [0.4, 2.0],
+  "flyIn": [2.2, 2.9],
+  "planetHits": [2.9, 4.2],
+  "streams": [4.2, 6.0],
+  "ring": [6.0, 8.6],
+  "hit2": 9.75,
+  "shatter": [9.8, 11.6],
+  "reform": [11.6, 15.5],
+  "moon": [17.0, 25.5],
+  "meteors": [27.0, 29.5, 32.0, 34.5],
+  "rain": [38.0, 42.4],
+  "bounce": 42.5,
+  "double": [43.0, 50.0],
+  "settle": [52.0, 60.0],
+  "fade": [58.4, 59.9]
+}
