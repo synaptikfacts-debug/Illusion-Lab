@@ -202,7 +202,11 @@ NEON_EMERALD = [
     ((0.0, 1.0, 0.5), 0), ((0.0, 0.85, 0.85), 1), ((0.75, 1.0, 0.9), 2), ((0.1, 0.65, 0.4), 3),
     ((0.0, 1.0, 0.7), 4), ((0.5, 1.0, 0.95), 5), ((0.0, 0.6, 0.5), 6), ((0.9, 1.0, 1.0), 7),
 ]
-NEON = NEON_EMERALD if LOOK == "D" else NEON_PURPLE  # 0019 emerald (owner: new colours)
+NEON_CRIMSON = [
+    ((1.0, 0.04, 0.08), 0), ((1.0, 0.8, 0.8), 1), ((0.7, 0.02, 0.05), 2), ((0.9, 0.7, 0.68), 3),
+    ((1.0, 0.1, 0.15), 4), ((1.0, 0.8, 0.8), 5), ((0.55, 0.0, 0.04), 6), ((0.9, 0.75, 0.75), 7),
+]
+NEON = NEON_EMERALD if LOOK == "D" else NEON_CRIMSON if LOOK == "E" else NEON_PURPLE  # 0019 emerald, 0023 crimson
 for col, i in NEON:
     ang = i / len(NEON) * 2 * math.pi + 0.2
     bpy.ops.mesh.primitive_plane_add(size=1.0)
@@ -227,11 +231,30 @@ for col, i in NEON:
 _bd = bpy.data.materials["Backdrop"].node_tree.nodes
 for n_ in _bd:
     if n_.type == "VALTORGB":
-        n_.color_ramp.elements[1].color = (0.0, 0.35, 0.25, 1) if LOOK == "D" else (0.55, 0.06, 1.0, 1)
+        n_.color_ramp.elements[1].color = (0.0, 0.35, 0.25, 1) if LOOK == "D" else (0.07, 0.002, 0.008, 1) if LOOK == "E" else (0.55, 0.06, 1.0, 1)
     if n_.type == "EMISSION":
         n_.inputs["Strength"].default_value = 2.2
 
-LIGHTS["Top"][0].data.color = (0.75, 1.0, 0.9) if LOOK == "D" else (0.7, 0.45, 1.0)
+LIGHTS["Top"][0].data.color = (0.75, 1.0, 0.9) if LOOK == "D" else (1.0, 0.92, 0.9) if LOOK == "E" else (0.7, 0.45, 1.0)
+if LOOK == "E":
+    # 0023 storm: tall studio light strips far behind, thrown out of focus - depth and detail at every edge,
+    # crimson + steel white (no coloured dots)
+    for _i, (_x, _c, _st) in enumerate([(-0.13, (1.0, 0.05, 0.1), 9), (-0.07, (1, 1, 1), 5), (0.0, (1.0, 0.05, 0.1), 7),
+                                         (0.06, (1, 0.95, 0.95), 4), (0.12, (1.0, 0.05, 0.1), 9), (-0.2, (1, 1, 1), 3), (0.19, (1, 1, 1), 3)]):
+        bpy.ops.mesh.primitive_plane_add(size=1.0, location=(_x, 0.55 + 0.05 * (_i % 2), 0.25), rotation=(math.radians(90), 0, 0))  # in front of the backdrop plane
+        _s = bpy.context.active_object
+        _s.scale = (0.012, 1.6, 1)
+        _sm = bpy.data.materials.new(f"Strip{_i}")
+        _sm.use_nodes = True
+        _sn = _sm.node_tree.nodes
+        _sn.clear()
+        _se = _sn.new("ShaderNodeEmission")
+        _se.inputs["Color"].default_value = (*_c, 1)
+        _se.inputs["Strength"].default_value = _st
+        _so = _sn.new("ShaderNodeOutputMaterial")
+        _sm.node_tree.links.new(_se.outputs[0], _so.inputs["Surface"])
+        _s.data.materials.append(_sm)
+        _s.visible_shadow = False
 if LOOK == "D":
     bk.hide_render = True  # the flat glow wall hid the city lights and read as an edge band  # no white highlights: every highlight carries colour
 LIGHTS["Top"][0].data.energy *= 0.6
@@ -406,7 +429,7 @@ def heights(fr, t):
         rr_t = np.hypot(X - bl[0, 0], Y - bl[0, 1])
         dome = dome + fr["tower"] * np.exp(-((rr_t / 0.011) ** 2)) ** 0.7 * e
     # fine ripples running over the liquid between the spikes
-    rip = 0.00016 * e * (np.sin(820 * (X * 0.8 + Y * 0.6) - 7.0 * t) + np.sin(640 * (X * -0.5 + Y * 0.86) - 5.3 * t + 1.7))
+    rip = float(os.environ.get("FERRO_RIP", "1")) * 0.00016 * e * (np.sin(820 * (X * 0.8 + Y * 0.6) - 7.0 * t) + np.sin(640 * (X * -0.5 + Y * 0.86) - 5.3 * t + 1.7))
     return pool + dome + spike + rip, spike, amp, sx, sy, sr, shape, prof
 
 
@@ -539,7 +562,7 @@ def frame_rest(fr, f, t):
     place_jumpers(fr)
     place_beads(fr)
     for em_ in NEON_EM:  # the creature glows a little on every heartbeat
-        em_.inputs["Strength"].default_value = 12.0 * fr.get("glow", 1.0)
+        em_.inputs["Strength"].default_value = (5.0 if LOOK == "E" else 12.0) * fr.get("glow", 1.0)  # E: softer highlights (photosensitivity)
     for name, (o, p0) in LIGHTS.items():
         a = 0.35 * math.sin(2 * math.pi * t / 14 + len(name)) + (0.25 * t / 30 if name == "Top" else 0)
         p = mathutils.Matrix.Rotation(a, 4, "Z") @ p0
