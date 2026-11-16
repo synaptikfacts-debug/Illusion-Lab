@@ -1,0 +1,16 @@
+{
+  "duration": 20,
+  "hookStory": 2.4,
+  "open": [0, 0.6],
+  "rewind": [0.6, 2.0],
+  "storyOffset": 2.0,
+  "takeoff": [0.8, 3.0],
+  "ring": [3.0, 6.0],
+  "helix": [6.0, 9.0],
+  "lanes": [9.0, 12.0],
+  "lasers": [10.0, 12.0],
+  "tesseract": [12.0, 15.0],
+  "land": [15.0, 17.2],
+  "lightsOff": [16.4, 17.6],
+  "fade": [19.0, 20.0]
+}

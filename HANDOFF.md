@@ -2,6 +2,18 @@
 
 The owner continues from another account (weekly limit hit). Nothing below is in local memory on the new account.
 
+## Nov 17 2026 - owner's OpenArt drone video (READ FIRST)
+- The owner made a 27 s 720p AI video on OpenArt (file on their Desktop: openart-cgt-20261117055510-...mp4): drones in
+  a dark hangar draw squares, a ring, a coil and a double helix with light trails, a red laser grid, then land.
+- Done: a 4K cover (ring frame at 9.3 s) + upload texts with AI labels ON (YouTube "altered or synthetic: YES", TikTok/IG
+  AI label ON) in `publish/openart-drones/` (local only, not in git).
+- AI tells: the drones have NO propellers; garbled lettering on the close-up drone (~19-21 s); drones merge/pop; lasers
+  switch on without cause; soft 720p.
+- **Next (owner): "rework the video so it doesn't look AI".** Offer two routes: (1) edit the clip - cut 19-21 s and the
+  glitchy bits, upscale to 1080x1920, grade, real sound (props stay missing -> keep the AI label); (2) rebuild the idea in
+  Blender with real drones (spinning props, LEDs, light-trail paths) - the 0025 drone work below
+  (`scripts/blender/drone_model.py`, `drone_swarm.py`, `drone_anim.py`, `src/scenes/drones/timeline.json`) is the start.
+
 ## What happened on Nov 16 (night) - READ BEFORE PITCHING ANYTHING
 - **0023 "Mercury learned to dance"** (32 mercury drops in patterns, magenta/lime bokeh): REJECTED - "super childish,
   effects super bad, I expected something professional like This thing eats steel". Archived in reels/archive/.
