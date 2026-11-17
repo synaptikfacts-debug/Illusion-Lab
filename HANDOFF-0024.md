@@ -1,3 +1,13 @@
+# 0024 DELIVERED (Nov 17 2026, v8) - read this first
+- Hook A: starts inside the closed sphere on a liquid-metal (mercury) core, camera flies out through the equator slit.
+- Effects: the mote galaxy was rejected ("looks like a planet with stars, copies the space video"); now a CIRCUIT FLOOR
+  (PCB traces, data pulses arrive on every lock, fire out on ignition) + a laser SCAN RING (src/scenes/core/fx.ts fxFrame).
+- Music: owner (a musician) rejected orchestral + 8 orchestral/harmony options; approved an ELECTRONIC score
+  (scripts/gen-music-core-synth.ts, F minor 110 BPM, pure synthesis, wired via generateCoreMusic). No piano credit.
+- Speed: Cycles hook frames took 23 s/frame (haze volume + chrome bounces with the camera inside) -> cut while inside,
+  now ~2.5 s/frame; 1260 frames at 60 fps rendered in ~40 min. Edge check fixed with rack light columns on the wall.
+- Delivered: publish/0024-core-unlock/ SHORT + SOCIALS + cover_4k.jpg + upload_texts.md (local, not in git).
+
 # Handoff: 0024 "This core is unlocking" - draft state (Nov 17 2026)
 
 Read CLAUDE.md and HANDOFF.md first. This file is only about 0024. Answer the owner in Bulgarian.

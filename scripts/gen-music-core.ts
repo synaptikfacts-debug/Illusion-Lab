@@ -3,16 +3,25 @@
 // with the dials, a low brass hit + timpani on every lock (the line climbs the scale), a big hit on the unlock, a timpani
 // roll into the ignition, full brass chord + strings on the core, horns over the ostinato in the payoff, the ostinato
 // slows as the bands come home and the final click lands on a low C hit; held strings ring into the fade.
+import { execFileSync } from "node:child_process";
 import { join } from "node:path";
 import type { Reel } from "../src/core/schema";
 import { rng } from "../src/core/seed";
 import { timeline } from "../src/core/timing";
-import { CORE, coreEvents, IGNITE as IGN_TAU, realAt, REWIND } from "../src/scenes/core/core";
+import { CORE, coreEvents, IGNITE as IGN_TAU, realAt, HOOK_OUT } from "../src/scenes/core/core";
 import { reverb, SR, stereo, writeWav } from "./lib/dsp";
-import { ASSETS } from "./lib/paths";
+import { ASSETS, ROOT } from "./lib/paths";
 import { orch, play, unpitched } from "./lib/sampler";
 
+/** v3 (owner, Nov 17 2026): the approved score is ELECTRONIC - scripts/gen-music-core-synth.ts (pure synthesis). */
 export function generateCoreMusic(reel: Reel): string {
+  const rel = `generated/${reel.id}-music.wav`;
+  execFileSync(process.execPath, [join(ROOT, "node_modules", "tsx", "dist", "cli.mjs"), join(ROOT, "scripts", "gen-music-core-synth.ts"), "--use"], { stdio: "inherit" });
+  return rel;
+}
+
+/** v2 orchestral score (rejected Nov 17 2026, kept for reference) */
+export function generateCoreMusicOrchestral(reel: Reel): string {
   const tl = timeline(reel);
   const out = stereo(tl.total / tl.fps);
   const r = rng(reel.seed, "core-music-v2");
@@ -36,12 +45,13 @@ export function generateCoreMusic(reel: Reel): string {
       O("basses", fig[i % fig.length], t, 0.05 * g * acc, step(t) * 0.8, 0.5, 0.12);
     }
   };
-  // HOOK: the eruption at 0.3 s - full hit; the rewind: strings sweep down
-  hit(0.3, 1.2, [36, 43, 51]);
-  O("violins", 79, 0.3, 0.035, 0.5, 0.64, 0.4, false);
-  for (let k = 0; k < 8; k++) O("violins", 79 - k * 2, REWIND[0] + 0.1 * k, 0.02, 0.2, 0.64, 0.15);
+  // v6 HOOK (inside the sphere, flying out): a held high string note + celli swell rising with the camera, a full hit
+  // as the hemispheres clack shut behind it at 1.72 s
+  O("violins", 79, 0.0, 0.03, 1.75, 0.64, 0.3);
+  O("celli", 48, 0.2, 0.04, 1.55, 0.42, 0.3);
+  hit(1.72, 1.2, [36, 43, 51]);
   // CRYPTEX: ostinato that speeds up as the dials go faster
-  ost(REWIND[1], OPEN, (t) => 0.3 - 0.11 * Math.min(1, (t - 1.6) / 5), 1);
+  ost(HOOK_OUT, OPEN, (t) => 0.3 - 0.11 * Math.min(1, (t - 1.6) / 5), 1);
   O("violas", 60, R(3.0), 0.02, OPEN - R(3.0), 0.58, 0.8);
   const SC = [48, 50, 51, 53, 55, 56, 58, 60, 62, 63, 65, 67, 68, 70];
   let n = 0, home = 0;

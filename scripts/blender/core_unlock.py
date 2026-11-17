@@ -57,6 +57,18 @@ try:
 except Exception:
     scene.view_settings.view_transform = "Filmic"
 
+FAST = bool(os.environ.get("CORE_FAST"))
+if FAST:  # owner, Nov 17: previews must take minutes -> realtime EEVEE for drafts (finals stay Cycles)
+    for _eng in ("BLENDER_EEVEE_NEXT", "BLENDER_EEVEE"):
+        try:
+            scene.render.engine = _eng
+            break
+        except Exception:
+            pass
+    try:
+        scene.eevee.taa_render_samples = 16
+    except Exception:
+        pass
 CEN = Vector((0, 0, 0.36))  # sphere centre (hovering over the base)
 CYAN = (0.38, 0.86, 1.0)
 
@@ -340,6 +352,122 @@ hL.new(hmul.outputs[0], he.inputs["Strength"])
 hL.new(he.outputs[0], hout.inputs["Surface"])
 heart.data.materials.append(hm)
 heart.visible_shadow = False
+# v5 (owner, Nov 17: "no lightning, liquid metal + glowing particles"): the core is a ball of LIQUID METAL. It wells up
+# when the inner shell opens, rises into smooth glossy spikes (Rosensweig cones, no crystals) that surge on every pulse,
+# turns slowly, and melts back into a smooth drop as the bands come home. The old crystal + light heart are hidden.
+crystal.hide_render = True
+heart.hide_render = True
+import numpy as _np
+def _ico(sub):
+    t_ = (1 + 5 ** 0.5) / 2
+    vs = [(-1, t_, 0), (1, t_, 0), (-1, -t_, 0), (1, -t_, 0), (0, -1, t_), (0, 1, t_), (0, -1, -t_), (0, 1, -t_), (t_, 0, -1), (t_, 0, 1), (-t_, 0, -1), (-t_, 0, 1)]
+    fs = [(0, 11, 5), (0, 5, 1), (0, 1, 7), (0, 7, 10), (0, 10, 11), (1, 5, 9), (5, 11, 4), (11, 10, 2), (10, 7, 6), (7, 1, 8), (3, 9, 4), (3, 4, 2), (3, 2, 6), (3, 6, 8), (3, 8, 9), (4, 9, 5), (2, 4, 11), (6, 2, 10), (8, 6, 7), (9, 8, 1)]
+    vs = [_np.array(v) / _np.linalg.norm(v) for v in vs]
+    for _ in range(sub):
+        cache, nf = {}, []
+        def mid(a_, b_):
+            k_ = (min(a_, b_), max(a_, b_))
+            if k_ not in cache:
+                m_ = vs[a_] + vs[b_]
+                vs.append(m_ / _np.linalg.norm(m_))
+                cache[k_] = len(vs) - 1
+            return cache[k_]
+        for a_, b_, c_ in fs:
+            ab, bc, ca = mid(a_, b_), mid(b_, c_), mid(c_, a_)
+            nf += [(a_, ab, ca), (b_, bc, ab), (c_, ca, bc), (ab, bc, ca)]
+        fs = nf
+    return _np.array(vs), _np.array(fs)
+LQV, LQF = _ico(6)
+_nt = 120
+_gi = _np.arange(_nt) + 0.5
+_zt = 1 - 2 * _gi / _nt
+_rt = _np.sqrt(1 - _zt ** 2)
+_at = _gi * math.pi * (3 - 5 ** 0.5)
+_tips = _np.stack([_rt * _np.cos(_at), _rt * _np.sin(_at), _zt], 1)
+LQ_SPK = _np.max(_np.clip((LQV @ _tips.T - 0.978) / 0.022, 0, 1) ** 3.0, axis=1)  # thin sharp cones (fat ones read as petals)
+_lme = bpy.data.meshes.new("LiquidCore")
+_lme.from_pydata((LQV * 0.04).tolist(), [], LQF.tolist())
+_lme.polygons.foreach_set("use_smooth", [True] * len(_lme.polygons))
+liquid = bpy.data.objects.new("LiquidCore", _lme)
+scene.collection.objects.link(liquid)
+liquid.location = CEN
+liquid.visible_shadow = False
+lqm, lqn, lql = mat("LiquidMetal")
+_lb = bsdf_of(lqn)
+_lb.inputs["Base Color"].default_value = (0.62, 0.66, 0.74, 1)
+_lb.inputs["Metallic"].default_value = 1.0
+_lb.inputs["Roughness"].default_value = 0.06
+_lb.inputs["Coat Weight"].default_value = 1.0
+_lb.inputs["Thin Film Thickness"].default_value = 300.0
+# a cyan fresnel edge glow so the dark mirror metal reads against the light inside the bands
+_lw = lqn.new("ShaderNodeLayerWeight")
+_lw.inputs["Blend"].default_value = 0.35
+_lp = lqn.new("ShaderNodeMath"); _lp.operation = "POWER"; _lp.inputs[1].default_value = 2.0
+_lm = lqn.new("ShaderNodeMath"); _lm.operation = "MULTIPLY"; _lm.inputs[1].default_value = 2.5
+lql.new(_lw.outputs["Facing"], _lp.inputs[0])
+lql.new(_lp.outputs[0], _lm.inputs[0])
+_lb.inputs["Emission Color"].default_value = (0.25, 0.8, 1.0, 1)
+lql.new(_lm.outputs[0], _lb.inputs["Emission Strength"])
+liquid.data.materials.append(lqm)
+PULSES = [8.7, 9.6, 10.5, 11.3, 12.05, 12.7, 13.35]
+
+
+# v6 (owner, Nov 17: "no core inside", "those are the spikes from earlier videos"): the core is a big SMOOTH ball of
+# liquid mercury - no spikes. Waves roll across it, every pulse sends a ring of ripples round it, and a soft blue light
+# shines through the wave troughs (mesh attribute "trough" drives the emission).
+_ta = liquid.data.attributes.new("trough", "FLOAT", "POINT")
+_lb.inputs["Base Color"].default_value = (0.86, 0.88, 0.92, 1)
+_lb.inputs["Roughness"].default_value = 0.03
+_lb.inputs["Thin Film Thickness"].default_value = 0.0
+_tr = lqn.new("ShaderNodeAttribute"); _tr.attribute_name = "trough"
+_tp = lqn.new("ShaderNodeMath"); _tp.operation = "POWER"; _tp.inputs[1].default_value = 2.0
+_tm = lqn.new("ShaderNodeMath"); _tm.operation = "MULTIPLY"; _tm.inputs[1].default_value = 2.2
+_ts = lqn.new("ShaderNodeMath"); _ts.operation = "ADD"
+lql.new(_tr.outputs["Fac"], _tp.inputs[0]); lql.new(_tp.outputs[0], _tm.inputs[0])
+lql.new(_tm.outputs[0], _ts.inputs[0]); lql.new(_lm.outputs[0], _ts.inputs[1])
+lql.new(_ts.outputs[0], _lb.inputs["Emission Strength"])
+_lm.inputs[1].default_value = 0.5
+LIQ_GAIN = _ts
+_A = [_np.array(v) / _np.linalg.norm(v) for v in ((1, 0.3, 0.2), (-0.2, 1, 0.5), (0.4, -0.5, 1), (0.7, 0.7, -0.3))]
+_PD = [_np.array(v) / _np.linalg.norm(v) for v in ((0, -1, 0.2), (0.6, -0.5, 0.6), (-0.7, -0.4, -0.3), (0.2, 0.3, 1), (0, -1, -0.5), (-0.5, -0.6, 0.6), (0.8, -0.2, -0.4))]
+
+
+def update_liquid(tau, c, amount):
+    grow = max(0.0, min(1.0, amount))
+    if grow < 0.01:
+        liquid.hide_render = True
+        return
+    liquid.hide_render = False
+    r0 = 0.018 + 0.022 * grow  # leaves room for the macro camera inside the shell
+    amp = 0.0022 + 0.0014 * c
+    d = (amp * _np.sin(13 * (LQV @ _A[0]) - 4.1 * tau) + amp * 0.8 * _np.sin(10 * (LQV @ _A[1]) + 3.3 * tau)
+         + amp * 0.6 * _np.sin(17 * (LQV @ _A[2]) - 5.2 * tau) + amp * 0.5 * _np.sin(8 * (LQV @ _A[3]) + 2.4 * tau))
+    for k, p_ in enumerate(PULSES):                      # a ring of ripples spreads round the ball on every pulse
+        a_ = tau - p_
+        if 0 < a_ < 1.6:
+            ang = _np.arccos(_np.clip(LQV @ _PD[k % len(_PD)], -1, 1))
+            d = d + 0.0045 * _np.exp(-a_ * 2.2) * _np.sin(26 * ang - 22 * a_) * _np.exp(-((ang - 1.6 * a_) / 0.5) ** 2)
+    a_ = tau - 0.05                                      # HOOK: the mercury surges at 0.25 s - a big ripple rolls past the lens
+    if 0 < a_ < 1.5:
+        ang = _np.arccos(_np.clip(LQV @ _PD[0], -1, 1))
+        d = d + min(1.0, a_ / 0.3) ** 2 * 0.006 * _np.exp(-a_ * 1.2) * _np.sin(9 * ang - 6 * a_) * _np.exp(-((ang - 0.8 * a_) / 0.9) ** 2)  # slow, wide swell: a fast ripple blinked the highlights (flash fail)
+    v = LQV * (r0 + d * grow)[:, None]
+    liquid.data.vertices.foreach_set("co", v.reshape(-1).astype(_np.float32))
+    tr = _np.clip(-d / (amp * 1.8), 0, 1)
+    liquid.data.attributes["trough"].data.foreach_set("value", tr.astype(_np.float32))
+    liquid.data.update()
+    LIQ_GAIN.inputs[1].default_value = 0.6 + 0.8 * c
+    liquid.rotation_euler = (0.12 * tau, 0.0, 0.25 * tau)
+
+
+_ig = bpy.data.lights.new("InnerGlow", "POINT")
+_ig.color = (0.35, 0.75, 1.0)
+_ig.shadow_soft_size = 0.02
+_ig.energy = 0.0
+inner_glow = _ig
+_igo = bpy.data.objects.new("InnerGlow", _ig)
+_igo.location = (CEN.x, CEN.y - 0.055, CEN.z + 0.02)
+scene.collection.objects.link(_igo)
 core_light = bpy.data.lights.new("CoreLight", "POINT")
 core_light.color = (0.15, 0.62, 1.0)
 core_light.shadow_soft_size = 0.03
@@ -434,6 +562,26 @@ for z, s in [(0.06, 1.0), (0.62, 0.6), (1.05, 0.45), (1.6, 0.3)]:
     ln.data.materials.append(lm)
     ln.visible_shadow = False
     LINES.append((le, 6.0 * s))
+# v8 (Instagram "border" check: the top of the wide shots was a flat dark wall): vertical light columns like server racks
+# and two more rings high up, so the defocused background carries structure up to the top edge (bars, not star dots)
+for z, s in [(2.1, 0.35), (2.6, 0.3)]:
+    bpy.ops.mesh.primitive_torus_add(major_radius=2.17, minor_radius=0.004, major_segments=256, location=(0, 0, z))
+    ln = bpy.context.active_object
+    lm, le = emissive(f"Line{z}", (0.25, 0.75, 1.0), 6.0 * s)
+    ln.data.materials.append(lm)
+    ln.visible_shadow = False
+    LINES.append((le, 6.0 * s))
+_colm_c, _ = emissive("RackCyan", (0.25, 0.75, 1.0), 1.5)
+_colm_v, _ = emissive("RackViolet", (0.55, 0.32, 1.0), 1.3)
+for j in range(36):
+    a = j / 36 * 2 * math.pi + 0.05
+    h = 1.1 + 1.4 * ((j * 0.618) % 1)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(2.16 * math.cos(a), 2.16 * math.sin(a), 0.25 + h / 2))
+    col = bpy.context.active_object
+    col.scale = (0.012, 0.012, h)
+    col.rotation_euler = (0, 0, a)
+    col.data.materials.append(_colm_c if j % 3 else _colm_v)
+    col.visible_shadow = False
 
 # lights: a raking key softbox (top-left), a cool rim strip (behind right), a faint fill
 def area(name, loc, size, power, col, shape="RECTANGLE", size_y=None):
@@ -487,40 +635,65 @@ def apply(fr, t):
             st.matrix_world = M
             # the seam pulse runs bottom -> top across the outer bands
             pulse = math.exp(-(((tau - (6.75 + 0.06 * (i - (n - 1) / 2))) / 0.14) ** 2)) if shell == 0 else 0.0
-            se.inputs["Strength"].default_value = 10.0 * b["lock"] + 16.0 * pulse
-            ob["glow"] = (0.25 * b["lock"] + 1.3 * fr["opened"][shell] + 0.5 * fr["core"]) if shell == 0 else 0.0
+            se.inputs["Strength"].default_value = (10.0 * b["lock"] + 16.0 * pulse) * (0.25 if fr.get("hook") else 1.0)  # band rims passing the hook lens bloomed the frame cyan
+            ob["glow"] = ((0.25 * b["lock"] + 1.3 * fr["opened"][shell] + 0.5 * fr["core"]) * (0.12 if fr.get("hook") else 1.0)) if shell == 0 else 0.0  # hook: the circuit traces pass inches from the lens and flashed the frame (0.6 s)
     for k, (lk, lke) in enumerate(LEAK):
         data = fr["outer"] if k == 0 else fr["inner"]
         opened = max(max(b["scale"] - 1, abs(b["lift"]) * 10, abs(b["angle"])) for b in data)
         lk.hide_render = opened > 0.002
-        lke.inputs["Strength"].default_value = 4.0 * fr["leak"][k] + 40.0 * fr["seam"]
+        lke.inputs["Strength"].default_value = 0.0 if fr.get("hook") else 4.0 * fr["leak"][k] + 40.0 * fr["seam"]  # no glow in the slit the hook camera flies through (flash check)
     c = fr["core"]
-    HSTR.default_value = 30.0 * c
+    update_liquid(fr.get("lt", tau), c, fr.get("liquid", fr["opened"][1]))
+    HSTR.default_value = 30.0 * c * (0.1 if FAST else 1.0) * (0.15 if fr.get("hook") else 1.0)  # EEVEE bloom blew the frame white; hook: rims pass the lens
     HW.default_value = 0.35 * tau
-    core_light.energy = 220.0 * c
+    core_light.energy = 320.0 * c * (0.03 if FAST else 0.15)  # it lit the band interiors into a blob that hid the core
     crystal.rotation_euler = (0.3 * tau, 0.2 * tau, 0.45 * tau)
     heart.rotation_euler = crystal.rotation_euler
-    ere.inputs["Strength"].default_value = 3.0 + 6.0 * c
+    ere.inputs["Strength"].default_value = (3.0 + 6.0 * c) * (0.4 if FAST else 1.0)
     fade = 1.0
     f0, f1 = spec["fade"]
     if t > f0:
         fade = max(0.0, 1 - (t - f0) / (f1 - f0)) ** 1.5
     for le, s in LINES:
         le.inputs["Strength"].default_value = s * fade
-    keyL.energy = 65.0 * fade
-    rimL.energy = 26.0 * fade
-    rim2L.energy = 22.0 * fade
-    fillL.energy = 6.0 * fade
+    # v4 (owner: too dark): brighter key/rims/fill and wall washes - the machine reads at phone size, the top edge has texture
+    keyL.energy = 120.0 * fade
+    rimL.energy = 48.0 * fade
+    rim2L.energy = 40.0 * fade
+    fillL.energy = 16.0 * fade
     for l in WASH:
-        l.energy = 520.0 * fade
+        l.energy = 1100.0 * fade
     # camera orbit around the sphere centre
     yaw, pitch, dist = fr["yaw"], fr["pitch"], fr["dist"]
     tgt = CEN + Vector(fr.get("look", (0, 0, 0)))
     loc = tgt + Vector((math.sin(yaw) * math.cos(pitch) * dist, -math.cos(yaw) * math.cos(pitch) * dist, math.sin(pitch) * dist))
     cam.location = loc
     cam.rotation_euler = (tgt - loc).to_track_quat("-Z", "Y").to_euler()
-    build_fx(fr.get("fx", []), loc)
+    build_fx(fr.get("fx", []), loc, (tgt - loc).length)
     camd.dof.focus_distance = (tgt - loc).length - (0.02 if fr.get("look", [0, 0, 0])[1] == 0 else 0.004)
+    if fr.get("hook"):  # v6 hook: macro on the mercury - wide lens, deep focus on the core's surface, light inside
+        dd = (tgt - loc).length
+        camd.lens = 24 + 46 * min(1.0, max(0.0, (dd - 0.06) / 0.5))
+        camd.dof.aperture_fstop = 16.0
+        camd.dof.focus_distance = max(0.01, dd - 0.03)
+        inner_glow.energy = 0.6 * (1.0 - min(1.0, max(0.0, (dd - 0.06) / 0.3)))
+        camd.dof.use_dof = False
+        # inside the chrome shell every ray bounces forever (23 s/frame): fewer bounces + no haze while inside
+        inside = dd < 0.2
+        scene.cycles.max_bounces, scene.cycles.glossy_bounces, scene.cycles.transmission_bounces = (6, 3, 4) if inside else (12, 6, 10)
+        if not FAST:
+            haze.hide_render = inside
+        # the inside was blown white and the slit crossing at 0.6 s flashed: darker inside, eases back as we pull out
+        scene.view_settings.exposure = -1.6 * (1.0 - min(1.0, max(0.0, (dd - 0.15) / 0.5)))
+    else:
+        scene.view_settings.exposure = 0.0
+        scene.cycles.max_bounces, scene.cycles.glossy_bounces, scene.cycles.transmission_bounces = 12, 6, 10
+        if not FAST:
+            haze.hide_render = False
+        camd.lens = 70
+        camd.dof.aperture_fstop = 4.0
+        camd.dof.use_dof = True
+        inner_glow.energy = 0.0
 
 
 # light linking: the core lights the machine, the base and the floor - not the vault wall (it washed it flat blue)
@@ -558,6 +731,8 @@ for k in range(7):
 # atmosphere: a thin haze so the core's light leaves the slits as beams
 bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, 1.2))
 haze = bpy.context.active_object
+if FAST:
+    haze.hide_render = True  # volume haze is the slow part; drafts go without it
 haze.scale = (4.2, 4.2, 2.4)
 vm, vn, vL = mat("Haze")
 vn.remove(bsdf_of(vn))
@@ -606,16 +781,26 @@ scene.compositing_node_group = ctree
 scene.render.use_compositing = True
 
 
-def build_fx(lines, campos):
+def build_fx(lines, campos, focus=1.0):
     verts, faces, cols = [], [], []
     for ln in lines:
         p = ln["p"]
         pts = [Vector(p[k:k + 3]) for k in range(0, len(p), 3)]
         if len(pts) < 2:
             continue
+        # motes that pass close to the lens became huge blinking bokeh blobs (flash check fail) - leave them out
+        dcam = min((q - campos).length for q in pts)
+        if dcam < 0.16:
+            continue
+        # out-of-focus motes in front of the focus plane blow up into big blinking discs (15.4 s flash fail):
+        # fade them by their blur size (relative circle of confusion), keep the in-focus galaxy bright
+        coc = abs(focus - dcam) / max(dcam, 1e-3)
+        dfade = min(1.0, max(0.0, 1.0 - (coc - 0.2) / 0.4))
+        if dfade <= 0.01:
+            continue
         w = ln["w"] * 0.5
         c = ln["c"]
-        s = ln["s"]
+        s = ln["s"] * dfade
         base = len(verts)
         tp = ln.get("t", 0)
         for k, q in enumerate(pts):

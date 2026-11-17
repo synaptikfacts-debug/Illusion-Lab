@@ -47,7 +47,7 @@ import { assetPaths, loadReel } from "./lib/reels";
 // GPU WebGL via ANGLE; "error" hides three.js deprecation chatter from the browser console.
 // CC BY 3.0 requires this credit wherever the in-house music (sampled piano) is published.
 const MUSIC_CREDIT = "Music: Illusion Lab. Piano samples: Salamander Grand Piano by Alexander Holm (CC BY 3.0).";
-const NO_PIANO_STYLES = ["liquid", "sand"]; // scores without the Salamander piano need no CC BY credit
+const NO_PIANO_STYLES = ["liquid", "sand", "core"]; // scores without the Salamander piano need no CC BY credit
 const MUSIC_CREDIT_SHORT = "Piano: Salamander Grand, A. Holm, CC BY 3.0"; // X (280 chars)
 
 const BROWSER = { chromiumOptions: { gl: "angle" as const }, logLevel: "error" as const };

@@ -8,7 +8,7 @@ import { join } from "node:path";
 import type { Reel } from "../src/core/schema";
 import { rng } from "../src/core/seed";
 import { timeline } from "../src/core/timing";
-import { CORE, coreEvents, IGNITE, IN_LOCKS, IN_STARTS, OUT_LOCKS, OUT_STARTS, realAt, REWIND } from "../src/scenes/core/core";
+import { CORE, coreEvents, IGNITE, IN_LOCKS, IN_STARTS, OUT_LOCKS, OUT_STARTS, realAt, HOOK_OUT } from "../src/scenes/core/core";
 import { FLARES } from "../src/scenes/core/fx";
 import { addWrapped, reverb, stereo, writeWav } from "./lib/dsp";
 import { ASSETS } from "./lib/paths";
@@ -59,13 +59,13 @@ export function generateCoreAudio(reel: Reel): string {
   });
   const pan = (i: number, n: number) => 0.3 + 0.4 * (i / (n - 1));
 
-  // hook: the open core hums, a soft bloom on frame 0
-  hum(0, REWIND[0] + 0.1, 0.05, (t) => 4 * t);
-  // rewind: a reversed swell, the bands ratchet shut, a slam
-  swell(REWIND[0], REWIND[1] - REWIND[0], 160, 420, 0.05, true);
-  for (let k = 0; k < 8; k++) thock(REWIND[0] + 0.3 + 0.075 * k, 140 + 10 * k, 0.07, 0.3 + 0.05 * k, 36, 0.25, 0.3);
-  lock(REWIND[1] - 0.04, 78, 0.3, 0.5);
-  boom(REWIND[1] - 0.04, 0.16, 1.2);
+  // v6 hook (option A): inside the sphere the mercury core hums; a rising air rush as the camera flies out through the
+  // slit; the two hemispheres clack shut behind it at 1.72 s
+  hum(0, HOOK_OUT, 0.06, (t) => 3 * t);
+  swell(0.4, HOOK_OUT - 0.45, 120, 380, 0.05);
+  thock(0.25, 52, 0.22, 0.5, 9, 1.0, 0.55); // the mercury surge in the hook
+  lock(1.72, 78, 0.3, 0.5);
+  boom(1.72, 0.16, 1.2);
   // dials
   OUT_STARTS.forEach((s, i) => whirr(s, OUT_LOCKS[i], 0.05, pan(i, 8)));
   IN_STARTS.forEach((s, i) => whirr(s, IN_LOCKS[i], 0.035, pan(i, 6)));
@@ -85,12 +85,22 @@ export function generateCoreAudio(reel: Reel): string {
     if (e.kind === "ignite") puff(e.t, 0.2, 1.2);
     if (e.kind === "final") puff(e.t, 0.12, 0.6);
   }
-  // core flares (story time; the second one is the cold-open eruption at 0.3 s)
-  boom(0.3, 0.26, 1.4, 42); puff(0.3, 0.2, 0.7);
+  // core pulses (v6: no cold-open eruption any more)
   for (const f of [FLARES[0], FLARES[2]]) { const t = realAt(f); if (t > 2) { boom(t, 0.16, 1.2, 46); puff(t, 0.1, 0.5); } }
   // the gyroscope hum while the bands orbit the core
   hum(realAt(IGNITE) - 0.5, realAt(15.2) - realAt(IGNITE) + 0.5, 0.045, (t) => 1.2 * t + 0.2 * t * t);
 
+  // v8: the liquid-metal core ripples on every pulse - a soft, creamy liquid "bloop" (a low tone sliding up, felted)
+  const bloop = (at: number, f: number, amp: number, pan: number) => {
+    let lp = 0;
+    addWrapped(out, at, 0.35, pan, (t) => {
+      const ff = f * (1 + 0.9 * (1 - Math.exp(-t * 28)));
+      const v = Math.sin(2 * Math.PI * ff * t) * Math.exp(-t * 14) * att(t, 0.006);
+      lp += (v - lp) * 0.25;
+      return lp * amp;
+    });
+  };
+  FLARES.forEach((f, i) => { const t = realAt(f); if (t > 2) { bloop(t, 150 + 22 * (i % 3), 0.16, 0.42 + 0.16 * (i % 2)); bloop(t + 0.11, 210 + 15 * (i % 2), 0.08, 0.55); } });
   reverb(out, { room: 0.55, damp: 0.6, wet: 0.15, preDelayMs: 10, loop: false });
   const rel = `generated/${reel.id}-sfx.wav`;
   writeWav(join(ASSETS, rel), out, 1.0);

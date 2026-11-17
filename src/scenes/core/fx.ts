@@ -12,7 +12,7 @@ import { bandsAt, FINAL, IGNITE, INNER, OUTER, SCHED, SEAM_PULSE, sm } from "./c
 
 type V = [number, number, number];
 export const CEN: V = [0, 0, 0.36];
-export const FLARES = [12.05, 12.7, 13.35]; // core eruptions in the payoff (12.7 lands at 0.3 s in the cold open)
+export const FLARES = [8.7, 9.6, 10.5, 11.3, 12.05, 12.7, 13.35]; // v4: an eruption every ~0.9 s through the payoff (12.7 lands at 0.3 s in the cold open)
 const G = 3.2, DRAG = 1.1;
 const hash = (i: number) => { const x = Math.sin(i * 12.9898 + 78.233) * 43758.5453; return x - Math.floor(x); };
 const deg = Math.PI / 180;
@@ -98,7 +98,7 @@ function buildSparks(): Spark[] {
     }
   }
   // the core erupts: ignition + flares
-  for (const [tau, n, sp] of [[IGNITE, 240, 1.4], ...FLARES.map((f, i) => (i === 1 ? [f, 340, 1.6] : [f, 120, 1.1]) as [number, number, number])] as const) { // 12.7 = the cold-open eruption
+  for (const [tau, n, sp] of [[IGNITE, 240, 1.4], ...FLARES.map((f, i) => (f === 12.7 ? [f, 340, 1.6] : [f, 180, 1.35]) as [number, number, number])] as const) { // 12.7 = the cold-open eruption
     for (let k = 0; k < n; k++) {
       const d = norm(add(rnd(), [0, 0, 0.15]));
       out.push({ t0: tau + r() * 0.06, p0: add(mul(d, 0.03), CEN), v0: mul(d, sp * (0.5 + 0.8 * r())), life: 0.6 + 0.8 * r(), hot: 1.3 });
@@ -142,7 +142,40 @@ function bolt(a: V, b: V, seed: number, rough = 0.28): V[] {
   return pts;
 }
 
-export function fxFrame(tau: number): Line[] {
+/** v5 (owner, Nov 17: "no lightning/flashes, I don't like them" -> liquid metal + glowing particles):
+ *  a galaxy of fine glowing motes orbiting the core on a tilted disk with two spiral arms, each with a short trail.
+ *  Faint while the sphere is shut, full once it opens, gone after the last band comes home. Story time drives it, so in
+ *  the cold-open rewind the galaxy spins backwards. */
+export function fxFrameGalaxy(tau: number): Line[] {
+  const L: Line[] = [];
+  const env = 0.22 * sm(1.4, 2.2, tau) + 0.78 * sm(3.6, 5.2, tau);
+  const home = 1 - sm(FINAL - 2.6, FINAL + 0.6, tau);
+  const glow = env * home;
+  if (glow < 0.01) return L;
+  const tilt = 0.42, cT = Math.cos(tilt), sT = Math.sin(tilt);
+  const N = 1100;
+  const CY2: V = [0.25, 0.85, 1.0], VI2: V = [0.62, 0.38, 1.0], WH: V = [0.9, 0.95, 1.0];
+  const swell = 1 + 0.35 * sm(IGNITE - 0.3, IGNITE + 0.8, tau);
+  for (let i = 0; i < N; i++) {
+    const h1 = hash(i * 3 + 1), h2 = hash(i * 3 + 2), h3 = hash(i * 3 + 3);
+    const arm = i % 2;
+    const r = (0.115 + 0.23 * h1 ** 0.8) * swell;
+    const w = 1.5 / Math.sqrt(r / 0.1);                              // inner motes orbit faster (Kepler-like)
+    const th0 = h2 * Math.PI * 2 * 0.25 + arm * Math.PI + 5.5 * Math.log(r / 0.1); // two spiral arms
+    const z = (h3 - 0.5) * 0.035 * (0.4 + r / 0.25);
+    const pts: V[] = [];
+    for (let k = 0; k < 4; k++) {
+      const th = th0 + w * (tau - 0.012 * k); // short tails: fine motes, not rain streaks
+      const x = r * Math.cos(th), y0 = r * Math.sin(th);
+      pts.push(add(CEN, [x, y0 * cT - z * sT, y0 * sT + z * cT]));
+    }
+    const c = h2 < 0.45 ? CY2 : h2 < 0.85 ? VI2 : WH;
+    L.push({ p: flat(pts), c, s: (5.0 + 6.0 * hash(i * 7 + 5)) * glow, w: 0.00035 + 0.0003 * hash(i * 11) });
+  }
+  return L;
+}
+
+export function fxFrameOld(tau: number): Line[] {
   SPARKS ??= buildSparks();
   const L: Line[] = [];
   const B = bandsAt(tau);
@@ -230,5 +263,102 @@ export function fxFrame(tau: number): Line[] {
       L.push({ p: flat(pts), c: mix(CY, VI, hash(k * 13)), s: 9 * burn * (0.6 + 0.4 * Math.sin(tau * 3 + k)), w: 0.0011 });
     }
   }
+  return L;
+}
+
+/** v7 (owner, Nov 17: "the lights around the ball copy the space video - a planet with stars; make effects that fit the
+ *  concept"). The motes are gone. Two effects that tell "a machine is being unlocked":
+ *  CIRCUIT FLOOR  copper-like traces etched into the floor run from the base outwards like a circuit board (dim when idle).
+ *                 Every dial lock is FED by data: bright pulses race in along the traces and arrive at the base exactly on
+ *                 the click; the ignition fires pulses OUT along every trace; the core keeps beating pulses out through
+ *                 the payoff; each band coming home pulls a pulse in; after the last click the board glows and goes dark.
+ *  SCAN RING      a thin laser ring scans the sphere bottom -> top while the outer dials find their positions, and the
+ *                 inner sphere top -> bottom while the inner dials do. */
+const ROUTES = (() => {
+  const R: V[][] = [];
+  const n = 16;
+  for (let k = 0; k < n; k++) {
+    let a = (k / n) * Math.PI * 2 + (hash(k * 5 + 1) - 0.5) * 0.12;
+    let r = 0.092;
+    const pts: V[] = [[r * Math.cos(a), r * Math.sin(a), 0.0009]];
+    const lenMax = 0.55 + 0.45 * hash(k * 5 + 2);
+    let seg = 0;
+    while (r < lenMax) {
+      r += 0.13 + 0.16 * hash(k * 17 + seg * 3);                     // a straight radial run
+      pts.push([r * Math.cos(a), r * Math.sin(a), 0.0009]);
+      if (r > lenMax) break;
+      const d = (hash(k * 23 + seg * 7) < 0.5 ? -1 : 1) * (0.018 + 0.016 * hash(k * 29 + seg));
+      r += Math.abs(d); a += d / r;                                     // a 45-degree jog, like a PCB trace
+      pts.push([r * Math.cos(a), r * Math.sin(a), 0.0009]);
+      seg++;
+    }
+    R.push(pts);
+  }
+  return R.map((pts) => {
+    const cum = [0];
+    for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + len(add(pts[i], mul(pts[i - 1], -1))));
+    return { pts, cum, L: cum[cum.length - 1] };
+  });
+})();
+/** the part of a route between arc lengths s0..s1 (clamped) */
+function sub(route: (typeof ROUTES)[number], s0: number, s1: number): V[] {
+  const a = Math.max(0, s0), b = Math.min(route.L, s1);
+  if (b <= a) return [];
+  const at = (s: number): V => {
+    let i = 1;
+    while (i < route.cum.length - 1 && route.cum[i] < s) i++;
+    const u = (s - route.cum[i - 1]) / (route.cum[i] - route.cum[i - 1] || 1);
+    return add(route.pts[i - 1], mul(add(route.pts[i], mul(route.pts[i - 1], -1)), u));
+  };
+  const out: V[] = [at(a)];
+  route.cum.forEach((c, i) => { if (c > a && c < b) out.push(route.pts[i]); });
+  out.push(at(b));
+  return out;
+}
+const SPEED = 1.3; // m per story second
+export function fxFrame(tau: number): Line[] {
+  const L: Line[] = [];
+  const CU: V = [0.3, 0.8, 1.0], WH: V = [0.85, 0.95, 1.0], VIO: V = [0.6, 0.4, 1.0];
+  // idle board glow: wakes with the dials, brighter while the core burns, glows up after the last click then dies
+  const board = 0.25 * sm(1.7, 2.3, tau) + 0.35 * sm(IGNITE - 0.2, IGNITE + 1.0, tau) * (1 - sm(14.0, 15.0, tau))
+    + 0.5 * Math.exp(-(((tau - (FINAL + 0.5)) / 0.7) ** 2));
+  const dark = 1 - sm(FINAL + 1.2, FINAL + 2.8, tau);
+  ROUTES.forEach((rt) => L.push({ p: flat(rt.pts), c: CU, s: 2.4 * board * dark, w: 0.0015 }));
+  // pulses: inward pulses ARRIVE at the base on an event, outward pulses LEAVE it
+  const pulse = (k: number, t0: number, inward: boolean, gain: number, c: V) => {
+    const rt = ROUTES[k % ROUTES.length];
+    const d = (tau - t0) * SPEED;                                       // distance travelled since the event
+    const head = inward ? rt.L + d : d;                                 // inward: head reaches 0 at t0
+    if (inward && (d > 0.02 || -d > rt.L + 0.1)) return;
+    if (!inward && (d < 0 || d > rt.L + 0.12)) return;
+    const s0 = inward ? -d : d - 0.1, s1 = inward ? -d + 0.1 : d;
+    const seg = sub(rt, s0, s1);
+    if (seg.length > 1) { L.push({ p: flat(seg), c, s: 10 * gain, w: 0.0024, t: inward ? 0 : 1 }); }
+    void head;
+  };
+  SCHED.OUT_LOCK.forEach((t, i) => [0, 5, 11].forEach((o) => pulse(i * 2 + o, t, true, 1, CU)));
+  SCHED.IN_LOCK.forEach((t, i) => [3, 9].forEach((o) => pulse(i * 3 + o, t, true, 1, VIO)));
+  ROUTES.forEach((_, k) => pulse(k, IGNITE, false, 1.4, WH));                       // ignition: every trace fires
+  FLARES.forEach((t, j) => [0, 4, 8, 12].forEach((o) => pulse(o + j, t, false, 0.8, j % 2 ? VIO : CU))); // the core's heartbeat
+  [...SCHED.IN_HOME, ...SCHED.OUT_HOME].forEach((t, i) => pulse(i * 5 + 2, t, true, 0.8, CU));
+  // scan ring: outer sphere bottom->top during the outer dials, inner sphere top->bottom during the inner dials
+  const ring = (z: number, r: number, g: number, c: V) => {
+    const pts: V[] = [];
+    for (let j = 0; j <= 96; j++) { const a = (j / 96) * Math.PI * 2; pts.push(add(CEN, [r * Math.cos(a), r * Math.sin(a), z])); }
+    L.push({ p: flat(pts), c, s: g, w: 0.0007 });
+  };
+  const scan = (t0: number, t1: number, R0: number, up: boolean, c: V) => {
+    if (tau < t0 || tau > t1) return;
+    const u = (tau - t0) / (t1 - t0);
+    const fade = sm(0, 0.08, u) * (1 - sm(0.9, 1, u));
+    [0, 0.035, 0.07].forEach((lag, j) => {
+      const uu = Math.max(0, u - lag);
+      const z = (up ? -1 : 1) * R0 * Math.cos(Math.PI * uu);       // follows the sphere's latitude
+      const r = Math.sqrt(Math.max(0, R0 * R0 - z * z)) + 0.004;
+      if (r > 0.01) ring(z, r, 7 * fade * (1 - 0.4 * j), c);
+    });
+  };
+  scan(1.75, SCHED.OUT_LOCK[7] + 0.1, OUTER.r + 0.003, true, CU);
+  scan(SCHED.IN_LOCK[0] - 0.5, SCHED.IN_LOCK[5] + 0.1, INNER.r + 0.003, false, VIO);
   return L;
 }

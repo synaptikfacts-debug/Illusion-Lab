@@ -31,36 +31,40 @@ const clamp = (x: number, a = 0, b = 1) => Math.max(a, Math.min(b, x));
 export const sm = (a: number, b: number, x: number) => { const u = clamp((x - a) / (b - a)); return u * u * (3 - 2 * u); };
 
 /** real time -> story time: cold open on the climax, a fast rewind, then the story plays at 1x. */
+// v6 (owner, Nov 17: "the opening repeats earlier videos" -> option A): no cold open / rewind any more. The reel opens
+// INSIDE the closed sphere on the mercury core; the camera flies out through the equator slit (HOOK_OUT) and the story
+// starts once it is outside.
+export const HOOK_OUT = 1.8;
 export function tauAt(t: number): number {
-  if (t < 0.6) return 12.4 + t;
-  if (t < 1.6) { const u = (t - 0.6) / 1.0; return 13.0 - (13.0 - 1.6) * (u * u * (3 - 2 * u)); }
+  if (t < HOOK_OUT) return 1.6;
   // slow motion around the ignition (story runs at 0.4x), so the core lighting up gets its moment
   let tau = 1.6;
   const dt = 0.005;
-  for (let x = 1.6; x < t; x += dt) tau += (1 - 0.6 * slowW(x + dt / 2)) * Math.min(dt, t - x);
+  for (let x = HOOK_OUT; x < t; x += dt) tau += (1 - 0.6 * slowW(x + dt / 2)) * Math.min(dt, t - x);
   return tau;
 }
-const slowW = (t: number) => sm(10.5, 10.9, t) * (1 - sm(12.2, 12.6, t));
+const slowW = (t: number) => sm(7.4, 7.8, t) * (1 - sm(9.0, 9.4, t)); // ignition at story 7.7 = real ~7.9
 /** story time -> real time (for sound events) */
 export function realAt(tau: number): number {
-  if (tau <= 1.6) return tau;
-  let a = 1.6, b = 30;
+  if (tau <= 1.6) return HOOK_OUT;
+  let a = HOOK_OUT, b = 30;
   for (let k = 0; k < 40; k++) { const m = (a + b) / 2; if (tauAt(m) < tau) a = m; else b = m; }
   return (a + b) / 2;
 }
-export const REWIND: [number, number] = [0.6, 1.6];
+export const REWIND: [number, number] = [-2, -1]; // v6: no rewind any more
 
 // dial schedules (story time): start spinning, clack into place
-const OUT_LOCK = [3.3, 4.05, 4.65, 5.15, 5.6, 5.95, 6.25, 6.5];
-const OUT_START = [1.6, 2.0, 2.4, 2.8, 3.2, 3.6, 4.0, 4.5]; // the first dial starts the moment the rewind lands
-const IN_LOCK = [8.9, 9.2, 9.45, 9.65, 9.85, 10.0];
-const IN_START = [8.3, 8.42, 8.54, 8.66, 8.78, 8.9];
-const OUT_OPEN = 7.0, IN_OPEN = 10.1;
+// v4 (owner, Nov 17: "super boring, just a ball"): the closed sphere lasts ~2 s - all 8 dials rip into place in 1.8 s
+const OUT_LOCK = [2.05, 2.3, 2.5, 2.68, 2.85, 3.0, 3.13, 3.25];
+const OUT_START = [1.6, 1.65, 1.7, 1.75, 1.8, 1.85, 1.9, 1.95]; // all dials spin from the moment the rewind lands
+const IN_LOCK = [5.6, 5.9, 6.15, 6.35, 6.55, 6.7];
+const IN_START = [5.0, 5.12, 5.24, 5.36, 5.48, 5.6];
+const OUT_OPEN = 3.7, IN_OPEN = 6.8;
 const IN_HOME = [14.2, 14.45, 14.7, 14.9, 15.1, 15.3];
 const OUT_HOME = [15.5, 15.75, 16.0, 16.25, 16.5, 16.72, 16.92, 17.2]; // outer bands land; the order is set by ORDER
 const OUT_ORDER = [3, 4, 2, 5, 1, 6, 0, 7]; // middle bands first, the caps last; the top cap (7) closes it
-export const SEAM_PULSE = 6.75;
-export const IGNITE = 11.0;
+export const SEAM_PULSE = 3.45;
+export const IGNITE = 7.7;
 export const FINAL = 17.2;
 
 interface Band { spin: number; scale: number; lift: number; axis: [number, number, number]; angle: number; lock: number }
@@ -134,25 +138,42 @@ export function coreFrame(t: number) {
   const leak = [0.5 + 1.5 * locked(OUT_LOCK), 0.5 + 1.5 * locked(IN_LOCK)];
   // light: the notch strips, a pulse up the seam, the crystal core
   const pulse = Math.exp(-(((tau - SEAM_PULSE) / 0.18) ** 2));
-  const core = 0.05 + 0.95 * sm(IGNITE - 0.5, IGNITE + 0.5, tau) * (1 - sm(14.0, 17.4, tau)) + 0.12 * (1 - sm(17.4, 19.5, tau)) * sm(14, 15, tau);
+  const core = 0.05 + 0.95 * sm(IGNITE - 0.5, IGNITE + 0.5, tau) * (1 - sm(13.0, 14.3, tau)) // dims before the bands fly home past it (flash check) + 0.12 * (1 - sm(17.4, 19.5, tau)) * sm(14, 15, tau);
   const breathe = 1 + 0.08 * Math.sin(tau * 2.4) * sm(IGNITE, IGNITE + 1, tau);
   // camera (story-driven, plus real-time ease at the end)
-  const open = sm(7.0, 8.6, tau) * (1 - sm(14.5, 17.2, tau));
-  const payoff = sm(10.5, 12.5, tau) * (1 - sm(14.0, 16.0, tau));
+  const open = sm(3.7, 5.3, tau) * (1 - sm(14.5, 17.2, tau));
+  const payoff = sm(7.2, 9.2, tau) * (1 - sm(14.0, 17.8, tau));
   const end = sm(18.4, 21, t);
   const hookPush = t < 0.6 ? 1 - t / 0.6 : 0; // the cold open starts closer
-  const dials = sm(1.8, 3.4, tau) * (1 - sm(6.2, 7.4, tau)); // push in on the dials while they spin and lock
-  const macro = Math.exp(-(((tau - 5.55) / 0.5) ** 2)); // a macro pass along the seam while three dials clack in a row
+  const dials = sm(1.6, 2.0, tau) * (1 - sm(3.2, 3.9, tau)); // push in on the dials while they rip into place
+  const macro = Math.exp(-(((tau - 2.75) / 0.32) ** 2)); // a fast macro pass along the seam as the last dials clack
+  // HOOK (option A): the camera starts inside the sphere, between the core and the inner bands, and flies straight
+  // out through the equator slit; the two hemispheres stand a few millimetres apart so the slit is open, and close
+  // with a clack the moment the camera is outside. The core glows for the hook, then dims until it is revealed again.
+  const hook = t < HOOK_OUT ? 1 : 0;
+  const hk = sm(0.15, HOOK_OUT, t);
+  const split = (1 - sm(1.45, 1.75, t)) * 0.012;
+  if (split > 0) {
+    outer.forEach((b, i) => { b.lift += (i < 4 ? -1 : 1) * split; });
+    inner.forEach((b, i) => { b.lift += (i < 3 ? -1 : 1) * split * 0.8; });
+  }
+  const hookCore = 1 - sm(1.3, 1.9, t);
+  const fYaw = (1 - macro) * (-28 + 22 * Math.sin(tau * 0.31) + 25 * dials * Math.sin(1.4 * (tau - 1.6)) + 40 * sm(3.7, 6.5, tau) + 150 * sm(7.4, 14.0, tau) - 35 * sm(14.0, 19.5, tau)) * (Math.PI / 180); // slow homecoming camera (fast orbit + chrome glints failed the flash check)
+  const fPitch = ((1 - macro) * (12 + 8 * open - 4 * payoff + 6 * end + 6 * dials) + 3 * macro) * (Math.PI / 180);
+  const fDist = (1 - macro) * (0.95 + 0.42 * open - 0.62 * payoff + 0.3 * end - 0.2 * dials) + 0.2 * macro; // v6: close on the core in the payoff
   return {
     tau,
     look: [0, -0.096 * macro, 0.03 * macro],
-    yaw: (1 - macro) * (-28 + 22 * Math.sin(tau * 0.31) + 18 * dials * Math.sin(0.5 * (tau - 2)) + 50 * sm(10.5, 14.5, tau) - 30 * sm(14.5, 18, tau)) * (Math.PI / 180),
-    pitch: ((1 - macro) * (12 + 8 * open - 4 * payoff + 6 * end + 6 * dials) + 3 * macro) * (Math.PI / 180),
-    dist: (1 - macro) * (0.95 + 0.42 * open - 0.1 * payoff + 0.3 * end - 0.06 * hookPush - 0.2 * dials) + 0.2 * macro,
+    hook,
+    lt: t < HOOK_OUT ? t - (HOOK_OUT - 1.6) : tau, // the mercury keeps moving while story time waits
+    liquid: Math.max(sm(6.8, 8.2, tau) * (1 - sm(13.6, 15.3, tau)), hookCore),
+    yaw: fYaw,
+    pitch: t < HOOK_OUT ? fPitch * sm(1.2, 1.8, t) : fPitch,
+    dist: t < HOOK_OUT ? 0.062 + (fDist - 0.062) * hk ** 2.2 : fDist,
     outer, inner, leak,
     seam: pulse,
-    core: core * breathe,
-    opened: [open, sm(10.1, 11.5, tau) * (1 - sm(13.6, 15.3, tau))],
+    core: Math.max(core * breathe, 0.9 * hookCore),
+    opened: [open, sm(6.8, 8.2, tau) * (1 - sm(13.6, 15.3, tau))],
     rewind: t >= REWIND[0] && t < REWIND[1] ? Math.sin(Math.PI * (t - REWIND[0]) / (REWIND[1] - REWIND[0])) : 0,
   };
 }
