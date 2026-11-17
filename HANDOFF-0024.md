@@ -1,4 +1,10 @@
-# 0024 DELIVERED (Nov 17 2026, v8) - read this first
+# 0024 DELIVERED (Nov 17 2026, v9 - replaces v8) - read this first
+- v9 (owner: "quality from 5 s on is bad, looks like AI"): haze OFF (milky wash), no painted circuit pattern in the bands,
+  64 samples + adaptive 0.01, AgX "Medium High Contrast", softer bloom; wall light rings removed (owner); a strip-light
+  gleam sweeps the chrome on the opens/ignition/final click (light-linked to the machine only) + a slowly drifting key.
+- Delivered as ONE sounds-only video (owner: no music on YouTube this time): publish/0024-core-unlock/0024-core-unlock.mp4.
+
+## v8 notes
 - Hook A: starts inside the closed sphere on a liquid-metal (mercury) core, camera flies out through the equator slit.
 - Effects: the mote galaxy was rejected ("looks like a planet with stars, copies the space video"); now a CIRCUIT FLOOR
   (PCB traces, data pulses arrive on every lock, fire out on ignition) + a laser SCAN RING (src/scenes/core/fx.ts fxFrame).

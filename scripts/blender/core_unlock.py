@@ -36,7 +36,7 @@ if os.environ.get("CORE_CPU"):  # an extra CPU-only worker that eats frames from
     scene.cycles.denoiser = "OPENIMAGEDENOISE"
 scene.cycles.samples = SAMPLES
 scene.cycles.use_adaptive_sampling = True
-scene.cycles.adaptive_threshold = 0.02
+scene.cycles.adaptive_threshold = 0.01
 scene.cycles.use_denoising = True
 scene.cycles.denoiser = "OPENIMAGEDENOISE" if os.environ.get("CORE_CPU") else "OPTIX"
 scene.cycles.max_bounces = 12
@@ -52,8 +52,8 @@ if os.environ.get("CORE_RES"):
 scene.render.resolution_percentage = 100
 scene.render.image_settings.file_format = "PNG"
 try:
-    scene.view_settings.view_transform = os.environ.get("CORE_VT", "Khronos PBR Neutral")
-    scene.view_settings.look = "None"
+    scene.view_settings.view_transform = os.environ.get("CORE_VT", "AgX")
+    scene.view_settings.look = os.environ.get("CORE_LOOK", "AgX - Medium High Contrast")
 except Exception:
     scene.view_settings.view_transform = "Filmic"
 
@@ -182,15 +182,19 @@ def add_circuit(m):
     br.inputs["Mortar Smooth"].default_value = 0.0
     br.inputs["Color1"].default_value = (0, 0, 0, 1); br.inputs["Color2"].default_value = (0, 0, 0, 1); br.inputs["Mortar"].default_value = (1, 1, 1, 1)
     L.new(tc.outputs["Object"], br.inputs["Vector"])
-    nz = n.new("ShaderNodeTexNoise"); nz.inputs["Scale"].default_value = 110.0
+    # v9 (owner: "looks like AI"): the staggered brick grid read as a brick wall - very wide bricks leave only the
+    # horizontal mortar lines = fine machined grooves running round the inside of each band
+    br.inputs["Brick Width"].default_value = 60.0
+    br.inputs["Row Height"].default_value = 0.22
+    nz = n.new("ShaderNodeTexNoise"); nz.inputs["Scale"].default_value = float(os.environ.get("CORE_TRACE_NZ", "22"))  # v9: long runs, not random dashes
     L.new(tc.outputs["Object"], nz.inputs["Vector"])
-    keep = n.new("ShaderNodeMath"); keep.operation = "GREATER_THAN"; keep.inputs[1].default_value = 0.6
+    keep = n.new("ShaderNodeMath"); keep.operation = "GREATER_THAN"; keep.inputs[1].default_value = -1.0  # v9: keep every groove (no random dropouts)
     L.new(nz.outputs["Fac"], keep.inputs[0])
     tr = n.new("ShaderNodeMath"); tr.operation = "MULTIPLY"
     L.new(br.outputs["Fac"], tr.inputs[0]); L.new(keep.outputs[0], tr.inputs[1])
     vo = n.new("ShaderNodeTexVoronoi"); vo.inputs["Scale"].default_value = 160.0
     L.new(tc.outputs["Object"], vo.inputs["Vector"])
-    via = n.new("ShaderNodeMath"); via.operation = "LESS_THAN"; via.inputs[1].default_value = 0.07
+    via = n.new("ShaderNodeMath"); via.operation = "LESS_THAN"; via.inputs[1].default_value = 0.0  # v9: no vias
     L.new(vo.outputs["Distance"], via.inputs[0])
     pat = n.new("ShaderNodeMath"); pat.operation = "MAXIMUM"
     L.new(tr.outputs[0], pat.inputs[0]); L.new(via.outputs[0], pat.inputs[1])
@@ -199,7 +203,7 @@ def add_circuit(m):
     L.new(pat.outputs[0], m1.inputs[0]); L.new(inner.outputs[0], m1.inputs[1])
     m2 = n.new("ShaderNodeMath"); m2.operation = "MULTIPLY"
     L.new(m1.outputs[0], m2.inputs[0]); L.new(at.outputs["Fac"], m2.inputs[1])
-    m3 = n.new("ShaderNodeMath"); m3.operation = "MULTIPLY"; m3.inputs[1].default_value = 7.0
+    m3 = n.new("ShaderNodeMath"); m3.operation = "MULTIPLY"; m3.inputs[1].default_value = float(os.environ.get("CORE_TRACE_GAIN", "0"))  # v9: 7 blew the traces white
     L.new(m2.outputs[0], m3.inputs[0])
     L.new(m3.outputs[0], b.inputs["Emission Strength"])
     sep = n.new("ShaderNodeSeparateXYZ"); L.new(tc.outputs["Object"], sep.inputs["Vector"])
@@ -607,6 +611,9 @@ fill, fillL = area("Fill", (0.6, -0.7, 0.35), 0.9, 6.0, (0.85, 0.92, 1.0))
 for o in (key, rim, rim2, fill):
     o.data.cycles.is_caustics_light = False
 fill.visible_glossy = False
+sweep, sweepL = area("Sweep", (0.0, -0.55, 0.48), 0.03, 0.0, (0.92, 0.96, 1.0), size_y=1.1)
+sweep.visible_camera = False
+sweep.data.cycles.is_caustics_light = False
 world = bpy.data.worlds.new("W")
 scene.world = world
 world.use_nodes = True
@@ -655,7 +662,22 @@ def apply(fr, t):
     if t > f0:
         fade = max(0.0, 1 - (t - f0) / (f1 - f0)) ** 1.5
     for le, s in LINES:
-        le.inputs["Strength"].default_value = s * fade
+        le.inputs["Strength"].default_value = 0.0  # v9 (owner): the glowing wall rings were "completely unnecessary"
+    # v9 "more life": a long strip light sweeps round the sphere on the big beats, so a gleam travels across the chrome
+    # (product-film look); the key light drifts slowly so the reflections never sit still
+    gl = 0.0
+    for ev, dur in ((3.7, 0.9), (6.8, 0.8), (7.7, 1.4), (17.2, 1.1)):
+        u = (tau - ev) / dur
+        if -0.05 < u < 1.05:
+            a = math.radians(-115 + 230 * min(1.0, max(0.0, u)))
+            sweep.location = CEN + Vector((0.55 * math.sin(a), -0.55 * math.cos(a), 0.12))
+            sweep.rotation_euler = (CEN - sweep.location).to_track_quat("-Z", "Y").to_euler()
+            gl = math.sin(math.pi * min(1.0, max(0.0, u))) ** 2
+            break
+    sweepL.energy = 200.0 * gl * fade
+    ka = math.radians(-18 + 36 * min(1.0, max(0.0, (tau - 1.6) / 17.0)) + 6 * math.sin(tau * 0.6))
+    key.location = CEN + Matrix.Rotation(ka, 4, "Z") @ (Vector((-0.55, -0.45, 0.95)) - CEN)
+    key.rotation_euler = (CEN - key.location).to_track_quat("-Z", "Y").to_euler()
     # v4 (owner: too dark): brighter key/rims/fill and wall washes - the machine reads at phone size, the top edge has texture
     keyL.energy = 120.0 * fade
     rimL.energy = 48.0 * fade
@@ -681,14 +703,14 @@ def apply(fr, t):
         # inside the chrome shell every ray bounces forever (23 s/frame): fewer bounces + no haze while inside
         inside = dd < 0.2
         scene.cycles.max_bounces, scene.cycles.glossy_bounces, scene.cycles.transmission_bounces = (6, 3, 4) if inside else (12, 6, 10)
-        if not FAST:
+        if not FAST and HAZE_ON:
             haze.hide_render = inside
         # the inside was blown white and the slit crossing at 0.6 s flashed: darker inside, eases back as we pull out
         scene.view_settings.exposure = -1.6 * (1.0 - min(1.0, max(0.0, (dd - 0.15) / 0.5)))
     else:
         scene.view_settings.exposure = 0.0
         scene.cycles.max_bounces, scene.cycles.glossy_bounces, scene.cycles.transmission_bounces = 12, 6, 10
-        if not FAST:
+        if not FAST and HAZE_ON:
             haze.hide_render = False
         camd.lens = 70
         camd.dof.aperture_fstop = 4.0
@@ -706,6 +728,13 @@ cl.light_linking.receiver_collection = lit
 # the rims only sculpt the machine (their glare on the glossy floor made a flat pale patch at the frame edge)
 for o in (rim, rim2):
     o.light_linking.receiver_collection = lit
+# the sweep gleam lights only the machine and the liquid core (on the wall it brightened the whole background)
+sweep_col = bpy.data.collections.new("SweepLit")
+for ob, st, se in OUTB + INB:
+    sweep_col.objects.link(ob)
+for o in (liquid, base):
+    sweep_col.objects.link(o)
+sweep.light_linking.receiver_collection = sweep_col
 
 # wall uplights: soft pools of light rising up the vault panels behind the sphere (lit wall only), so the top of the
 # frame has depth and texture instead of flat dark blue
@@ -731,13 +760,14 @@ for k in range(7):
 # atmosphere: a thin haze so the core's light leaves the slits as beams
 bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, 1.2))
 haze = bpy.context.active_object
-if FAST:
+HAZE_ON = float(os.environ.get("CORE_HAZE", "0")) > 0  # v9: off - it washed the frame milky (owner: "looks like AI")
+if FAST or not HAZE_ON:
     haze.hide_render = True  # volume haze is the slow part; drafts go without it
 haze.scale = (4.2, 4.2, 2.4)
 vm, vn, vL = mat("Haze")
 vn.remove(bsdf_of(vn))
 pv = vn.new("ShaderNodeVolumePrincipled")
-pv.inputs["Density"].default_value = float(os.environ.get("CORE_HAZE", "0.012"))
+pv.inputs["Density"].default_value = float(os.environ.get("CORE_HAZE", "0"))
 pv.inputs["Anisotropy"].default_value = 0.55
 pv.inputs["Color"].default_value = (0.7, 0.8, 1.0, 1)
 vL.new(pv.outputs[0], next(x for x in vn if x.type == "OUTPUT_MATERIAL").inputs["Volume"])
@@ -771,8 +801,8 @@ ctree.interface.new_socket("Image", in_out="OUTPUT", socket_type="NodeSocketColo
 crl = ctree.nodes.new("CompositorNodeRLayers")
 cgl = ctree.nodes.new("CompositorNodeGlare")
 cgl.inputs["Type"].default_value = "Bloom"
-cgl.inputs["Threshold"].default_value = 2.5
-cgl.inputs["Strength"].default_value = 0.55
+cgl.inputs["Threshold"].default_value = 4.0
+cgl.inputs["Strength"].default_value = 0.3
 cgl.inputs["Size"].default_value = 0.6
 cout = ctree.nodes.new("NodeGroupOutput")
 ctree.links.new(crl.outputs["Image"], cgl.inputs["Image"])
