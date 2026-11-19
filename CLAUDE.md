@@ -4,6 +4,33 @@ Owner: devkata (Sofia, UTC+2). Repo synaptikfacts-debug/Illusion-Lab is PRIVATE 
 Commit author dev8xx <milenalbeev@gmail.com>. Code and text only in git, never renders or audio.
 Never upload or post anything to any platform; `publish/` is a local folder the owner posts from.
 
+# THE LAW (owner, Nov 19 2026: "I want it to be like a LAW") - read FIRST; it overrides every other rule and default
+Why: the 0028 ink rebuild took a whole day (heavy CPU-only simulation chosen without timing it, unmeasured ETAs, a
+4-hour bake deleted by an untested "speed-up", jobs killed by a session restart). A similar Short took 30 MINUTES. The
+owner pays for every message and is short of money - wasted hours and questions are real money.
+
+1. RESEARCH EVERYTHING, ALWAYS. For every video, before building, research what the owner asked for AND what wins on
+   Shorts/Reels/TikTok right now (top-performing similar videos, hooks, effects, pacing, length, sound).
+2. PROPOSE. Send a short proposal for every video: how it would look most beautiful, which effects to use, what holds
+   every viewer to the end - and recommend the most winning (earning) variant, with the reason.
+3. FULL POWER, FASTEST ROUTE. Use the best, fastest tools. A reel must fit ~30-60 min of wall time from approval to
+   delivery. Before choosing a method, time a short probe on THIS machine including its heaviest part (e.g. late,
+   fluid-filled simulation frames). If the full job won't fit, pick a lighter method - never make the owner wait hours.
+4. MEASURED ETAs ONLY. Never promise a time that was not measured; add margin; report a slip once with the new time.
+5. PROBLEMS GO TO THE OWNER AT ONCE. When something fails, gets slow, looks worse, costs time or risks work: tell the
+   owner immediately with the facts, the options and a recommendation. No unilateral "fixes" that can cost hours.
+   Routine technical details are mine to decide; anything that affects time, quality, cost or risk goes to the owner.
+6. VERIFY BEFORE SENDING. Check sharpness at full 1080p and sound on the phone band (>200 Hz, about -20 LUFS) myself;
+   never make the owner find blur, silence or broken files. Ask the owner only real taste decisions, in ONE question.
+7. NEVER RISK LIVE WORK. Copy first. Never point a second Blender process at a live fluid cache (it deletes it).
+   Blender fluid (Mantaflow) bakes on the CPU only; the GPU only speeds up Cycles rendering.
+8. DETACHED LONG JOBS. Start long jobs detached (PowerShell Start-Process) so a session restart can't kill them;
+   chain bake -> render -> encode automatically.
+9. DELIVER CLEARLY. One message per video with a big label ("ТОВА Е ЗА YOUTUBE" / "ТОВА Е ЗА TIKTOK, INSTAGRAM,
+   FACEBOOK И X"), the platform in the file name, a good-quality copy under 30 MiB, upload texts + YouTube tags.
+
+
+# Standing rules (all still apply; THE LAW above wins on any conflict)
 - Read README.md first (commands, reel config, effect contract, checks).
 - Work milestone by milestone; after each one render a preview and tell the owner what to look at.
 - Ask before adding any paid service or API.
@@ -120,29 +147,3 @@ Say which of these you checked and what you changed. The owner should never have
 - EDGES: no large flat single-colour areas along the frame edges - Instagram flagged 0018 "Your video has a border".
   Fill the top/bottom/sides with real detail (lit background with depth, soft bokeh shapes, objects). The render now
   runs an edge-band check (scripts/lib/edges.ts) and prints a WARNING; fix it before delivering.
-
-## RULE: TIME BUDGET + NO LOST WORK (owner, Nov 19 2026 - after 0028 ink took a whole day: "a similar Short took 30
-## MINUTES", "you lost 4 hours of my time") - the owner pays for every message and is short of money
-- A reel must fit ~30-60 min of wall time from approval to delivery. BEFORE building, research the method yourself and
-  time a short probe on this machine INCLUDING its heaviest part (e.g. late, ink-filled simulation frames). If the full
-  job won't fit, pick a lighter method - never make the owner wait hours.
-- Blender fluid (Mantaflow) bakes on the CPU only; the GPU only speeds up Cycles rendering. Bake cost grows as the
-  fluid fills the domain - measure late frames.
-- ETAs only from measurements, with margin. Never promise a time you have not measured.
-- Check sharpness at full 1080p and sound on the phone band (>200 Hz, ~-20 LUFS) yourself before sending anything; do
-  not make the owner find blur or silence.
-- Ask the owner only real taste decisions, in ONE question; research and decide everything else yourself.
-- NEVER experiment on live work: copy first. Never point a second Blender process at a live fluid cache - it deletes it.
-- Start long jobs detached (PowerShell Start-Process) so a session restart can't kill them; chain bake -> render ->
-  encode automatically.
-
-## RULE: RESEARCH EVERYTHING, PROPOSE, REPORT PROBLEMS (owner, Nov 19 2026 - in capitals, "ALWAYS, ABSOLUTELY ALWAYS")
-- For EVERY video, before building: research what the owner asked for and what wins on Shorts/Reels/TikTok right now
-  (top-performing similar videos, hooks, effects, pacing, length, sound), then send a short proposal: how it would look
-  most beautiful, which effects to use, and what holds every viewer to the end. Recommend the most winning (earning)
-  variant, and say why.
-- Use full capacity and the best, fastest tools for the job; find the fastest route to the same or better quality
-  (time a probe first - see TIME BUDGET).
-- When a PROBLEM appears (something fails, gets slow, looks worse, costs time or risks work): tell the owner AT ONCE
-  with the facts, the options and a recommendation - do NOT take a unilateral "fix" that can cost hours. Routine
-  technical details stay mine to decide; anything that affects time, quality, cost or risk goes to the owner first.
