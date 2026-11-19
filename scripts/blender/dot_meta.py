@@ -60,13 +60,13 @@ size_attr = me.attributes.new("dsize", "FLOAT", "POINT")
 BEAD = bpy.data.materials.new("Bead"); BEAD.use_nodes = True
 bn, bl = BEAD.node_tree.nodes, BEAD.node_tree.links
 bsdf = bn["Principled BSDF"]
-bsdf.inputs["Base Color"].default_value = (0.9, 0.9, 1.0, 1); bsdf.inputs["Roughness"].default_value = 0.04
-bsdf.inputs["Transmission Weight"].default_value = 0.6; bsdf.inputs["IOR"].default_value = 1.5
-bsdf.inputs["Coat Weight"].default_value = 0.6
+bsdf.inputs["Base Color"].default_value = (0.9, 0.9, 1.0, 1); bsdf.inputs["Roughness"].default_value = 0.2
+bsdf.inputs["Metallic"].default_value = 1.0; bsdf.inputs["Coat Weight"].default_value = 0.3
 ac = bn.new("ShaderNodeAttribute"); ac.attribute_type = "INSTANCER"; ac.attribute_name = "dcol"
 ag = bn.new("ShaderNodeAttribute"); ag.attribute_type = "INSTANCER"; ag.attribute_name = "dglow"
 bl.new(ac.outputs["Color"], bsdf.inputs["Emission Color"]); bl.new(ac.outputs["Color"], bsdf.inputs["Base Color"])
-bl.new(ag.outputs["Fac"], bsdf.inputs["Emission Strength"])
+_ge = bn.new("ShaderNodeMath"); _ge.operation = "MULTIPLY"; _ge.inputs[1].default_value = 0.55
+bl.new(ag.outputs["Fac"], _ge.inputs[0]); bl.new(_ge.outputs[0], bsdf.inputs["Emission Strength"])
 
 gn = dots.modifiers.new("Beads", "NODES")
 tree = bpy.data.node_groups.new("Beads", "GeometryNodeTree")
@@ -74,7 +74,7 @@ tree.interface.new_socket("Geometry", in_out="INPUT", socket_type="NodeSocketGeo
 tree.interface.new_socket("Geometry", in_out="OUTPUT", socket_type="NodeSocketGeometry")
 gi = tree.nodes.new("NodeGroupInput"); go = tree.nodes.new("NodeGroupOutput")
 iop = tree.nodes.new("GeometryNodeInstanceOnPoints")
-ico = tree.nodes.new("GeometryNodeMeshIcoSphere"); ico.inputs["Radius"].default_value = 0.013; ico.inputs["Subdivisions"].default_value = 3
+ico = tree.nodes.new("GeometryNodeMeshIcoSphere"); ico.inputs["Radius"].default_value = 0.0095; ico.inputs["Subdivisions"].default_value = 3
 sm_ = tree.nodes.new("GeometryNodeSetShadeSmooth")
 setm = tree.nodes.new("GeometryNodeSetMaterial"); setm.inputs["Material"].default_value = BEAD
 tree.links.new(gi.outputs[0], iop.inputs["Points"]); tree.links.new(ico.outputs["Mesh"], sm_.inputs["Geometry"])
@@ -92,6 +92,76 @@ tree.links.new(_sm.outputs[0], _sc.inputs["Z"]); tree.links.new(_sc.outputs[0], 
 tree.links.new(sm_.outputs["Geometry"], iop.inputs["Instance"]); tree.links.new(iop.outputs["Instances"], setm.inputs["Geometry"])
 tree.links.new(setm.outputs["Geometry"], go.inputs[0])
 gn.node_group = tree
+
+def _neighbours(k=6):
+    pairs = set()
+    for s0 in range(0, N, 600):
+        D = DIR[s0:s0 + 600] @ DIR.T
+        idx = np.argpartition(-D, k + 1, axis=1)[:, :k + 1]
+        for r, row in enumerate(idx):
+            a = s0 + r
+            for b in row:
+                if b != a:
+                    pairs.add((min(a, int(b)), max(a, int(b))))
+    arr = np.array(sorted(pairs))
+    return arr[:, 0], arr[:, 1]
+
+
+EA, EB = _neighbours()
+NE = len(EA)
+L0 = np.linalg.norm(DIR[EA] - DIR[EB], axis=1)
+WIRE_R = 0.0028
+wme = bpy.data.meshes.new("Wires"); wme.from_pydata(np.zeros((NE, 3)).tolist(), [], [])
+wires = bpy.data.objects.new("Wires", wme); scene.collection.objects.link(wires)
+w_dir = wme.attributes.new("wdir", "FLOAT_VECTOR", "POINT"); w_len = wme.attributes.new("wlen", "FLOAT", "POINT")
+w_vis = wme.attributes.new("wvis", "FLOAT", "POINT"); w_col = wme.attributes.new("dcol", "FLOAT_COLOR", "POINT")
+w_glow = wme.attributes.new("dglow", "FLOAT", "POINT")
+WIRE = bpy.data.materials.new("Wire"); WIRE.use_nodes = True
+wn_, wl_ = WIRE.node_tree.nodes, WIRE.node_tree.links
+wb = wn_["Principled BSDF"]; wb.inputs["Metallic"].default_value = 1.0; wb.inputs["Roughness"].default_value = 0.22
+_wc = wn_.new("ShaderNodeAttribute"); _wc.attribute_type = "INSTANCER"; _wc.attribute_name = "dcol"
+_wg = wn_.new("ShaderNodeAttribute"); _wg.attribute_type = "INSTANCER"; _wg.attribute_name = "dglow"
+_wmix = wn_.new("ShaderNodeMix"); _wmix.data_type = "RGBA"; _wmix.inputs["Factor"].default_value = 0.45
+_wmix.inputs["B"].default_value = (0.85, 0.88, 0.92, 1)
+wl_.new(_wc.outputs["Color"], _wmix.inputs["A"]); wl_.new(_wmix.outputs["Result"], wb.inputs["Base Color"])
+wl_.new(_wc.outputs["Color"], wb.inputs["Emission Color"]); wl_.new(_wg.outputs["Fac"], wb.inputs["Emission Strength"])
+wg = wires.modifiers.new("Wires", "NODES")
+wt = bpy.data.node_groups.new("Wires", "GeometryNodeTree")
+wt.interface.new_socket("Geometry", in_out="INPUT", socket_type="NodeSocketGeometry")
+wt.interface.new_socket("Geometry", in_out="OUTPUT", socket_type="NodeSocketGeometry")
+_gi = wt.nodes.new("NodeGroupInput"); _go = wt.nodes.new("NodeGroupOutput")
+_ip = wt.nodes.new("GeometryNodeInstanceOnPoints")
+_cy = wt.nodes.new("GeometryNodeMeshCylinder"); _cy.inputs["Vertices"].default_value = 6
+_cy.inputs["Radius"].default_value = 1.0; _cy.inputs["Depth"].default_value = 1.0
+_cs = wt.nodes.new("GeometryNodeSetShadeSmooth")
+_cm = wt.nodes.new("GeometryNodeSetMaterial"); _cm.inputs["Material"].default_value = WIRE
+_nd = wt.nodes.new("GeometryNodeInputNamedAttribute"); _nd.data_type = "FLOAT_VECTOR"; _nd.inputs["Name"].default_value = "wdir"
+_na = wt.nodes.new("FunctionNodeAlignEulerToVector"); _na.axis = "Z"
+_nl = wt.nodes.new("GeometryNodeInputNamedAttribute"); _nl.data_type = "FLOAT"; _nl.inputs["Name"].default_value = "wlen"
+_nv = wt.nodes.new("GeometryNodeInputNamedAttribute"); _nv.data_type = "FLOAT"; _nv.inputs["Name"].default_value = "wvis"
+_nr = wt.nodes.new("ShaderNodeMath"); _nr.operation = "MULTIPLY"; _nr.inputs[1].default_value = WIRE_R
+_nc = wt.nodes.new("ShaderNodeCombineXYZ")
+wt.links.new(_gi.outputs[0], _ip.inputs["Points"]); wt.links.new(_cy.outputs["Mesh"], _cs.inputs["Geometry"])
+wt.links.new(_cs.outputs["Geometry"], _cm.inputs["Geometry"]); wt.links.new(_cm.outputs["Geometry"], _ip.inputs["Instance"])
+wt.links.new(_nd.outputs["Attribute"], _na.inputs["Vector"]); wt.links.new(_na.outputs["Rotation"], _ip.inputs["Rotation"])
+wt.links.new(_nv.outputs["Attribute"], _nr.inputs[0]); wt.links.new(_nr.outputs[0], _nc.inputs["X"]); wt.links.new(_nr.outputs[0], _nc.inputs["Y"])
+wt.links.new(_nl.outputs["Attribute"], _nc.inputs["Z"]); wt.links.new(_nc.outputs[0], _ip.inputs["Scale"])
+wt.links.new(_ip.outputs["Instances"], _go.inputs[0])
+wg.node_group = wt
+
+
+def update_wires(P, glow, col):
+    pa, pb = P[EA], P[EB]
+    d = pb - pa; L = np.linalg.norm(d, axis=1)
+    vis = np.clip((3.0 - L / L0) / 0.8, 0, 1) * np.minimum(np.minimum(SIZE[EA], SIZE[EB]), 1.0)
+    wme.vertices.foreach_set("co", ((pa + pb) * 0.5).reshape(-1).astype(np.float32))
+    w_dir.data.foreach_set("vector", (d / np.maximum(L, 1e-6)[:, None]).reshape(-1).astype(np.float32))
+    w_len.data.foreach_set("value", L.astype(np.float32))
+    w_vis.data.foreach_set("value", vis.astype(np.float32))
+    w_col.data.foreach_set("color", ((col[EA] + col[EB]) * 0.5).reshape(-1).astype(np.float32))
+    w_glow.data.foreach_set("value", (0.35 * (glow[EA] + glow[EB]) * vis).astype(np.float32))
+    wme.update()
+
 
 # ---- space: black with a faint violet nebula + a far star field (detail to the frame edges) ----
 world = bpy.data.worlds.new("W"); scene.world = world; world.use_nodes = True
@@ -265,7 +335,13 @@ def s_disc(t):                                  # flattens into a wavy disc that
 
 SHAPES = [(0.0, s_blob), (3.0, s_peanut), (6.4, s_bumpy), (9.8, s_dumbbell), (13.2, s_three), (16.6, s_hourglass),
           (20.0, s_disc), (23.4, s_blob)]
-BURSTS = [(ts - 0.05, 0.45) for ts, _ in SHAPES[1:]]   # a gentle exhale drives every change
+BURSTS = []                                     # (the old exhales are gone: every change is a light wave now)
+WAVE, FLIP = 1.4, 0.9                           # a ring of light crosses the body in 1.4 s; each node re-forms in 0.9 s
+_AX = [(0, 0, 1), (0, 0, 1), (1, 0, 0), (0.5, 0, 0.86), (-1, 0, 0), (0, 0, -1), (0, 0, 1), (1, 0, 0.3)]
+WAVE_START = []
+for _a in _AX:
+    _v = np.array(_a, float); _v /= np.linalg.norm(_v)
+    WAVE_START.append(WAVE * (DIR @ _v + 1) / 2)  # per-node delay: the change travels across the body as a wave
 SPLIT_T = 13.2
 
 # ---------------- OPENING: the 0021 "One Hit" formula, our look (owner Nov 18 2026: "an opening like One Hit Broke 2000
@@ -361,16 +437,20 @@ def opening_off(t):
 def shape_state(t):
     i0 = 0
     for i in range(len(SHAPES)):
-        if t >= SHAPES[i][0] + MORPH + 0.45:
+        if t >= SHAPES[i][0] + WAVE + FLIP + 0.05:
             i0 = i
     P, C = SHAPES[i0][1](t)
     for i in range(i0 + 1, len(SHAPES)):
         ts = SHAPES[i][0]
         if t < ts:
             break
-        w = _smoother(np.clip((t - ts - 0.4 * JIT) / MORPH, 0, 1))[:, None]
+        w = _smoother(np.clip((t - ts - WAVE_START[i]) / FLIP, 0, 1))
         P2, C2 = SHAPES[i][1](t)
-        P = P + (P2 - P) * w; C = C + (C2 - C) * w
+        mid = 0.5 * (P + P2) - 0.5 * (C + C2)
+        lift = mid / np.maximum(np.linalg.norm(mid, axis=1, keepdims=True), 1e-6)
+        arc = (0.3 * np.sin(math.pi * w) * np.linalg.norm(P2 - P, axis=1))[:, None]
+        P = P + (P2 - P) * w[:, None] + lift * arc       # each node re-forms along a soft arc
+        C = C + (C2 - C) * w[:, None]
     return P, C
 
 
@@ -394,11 +474,14 @@ def positions(t):
             glow = glow + 1.0 * s * math.sin(0.5 * math.pi * min(1.0, uu / 0.3)) ** 2 * math.exp(-max(u - 0.3, 0.0) * 1.6) * (0.6 + 0.4 * JIT)
             grow = 1.0 + 1.2 * A * (0.7 + 0.6 * JIT) / 1.3
             SIZE = SIZE * grow; glow = glow / grow ** 2
-    # sparks at the split: beads glow and swell while they travel to their new sphere
-    if SPLIT_T < t < SPLIT_T + MORPH + 0.5:
-        ws = _smoother(np.clip((t - SPLIT_T - 0.4 * JIT) / MORPH, 0, 1))
-        sp = np.sin(math.pi * ws)
-        glow = glow + 0.7 * sp; SIZE = SIZE * (1 + 0.4 * sp)
+    # the light wave: a bright, near-white ring rides across the body just ahead of the nodes that re-form
+    global RING; RING = np.zeros(N)
+    for i in range(1, len(SHAPES)):
+        ts = SHAPES[i][0]
+        if ts - 0.2 < t < ts + WAVE + FLIP + 0.4:
+            ring = np.exp(-((t - ts - WAVE_START[i] - 0.15) / 0.1) ** 2)
+            RING = np.maximum(RING, ring)
+            glow = glow + 2.6 * ring; SIZE = SIZE * (1 + 0.3 * ring)
     if t < 7.0:
         oo = opening_off(t); P = P + oo
         # flying beads swell into soft glowing orbs (light spread over them): readable debris, no pixel flicker
@@ -506,7 +589,7 @@ _hb = {}
 for _t, _n in OP_HITS:
     _hb[round(_t * 20) / 20] = _hb.get(round(_t * 20) / 20, 0) + _n
 _mo = np.linalg.norm(OP_OFF, axis=2).mean(1); _home = next((real_of(i * OP_DS) for i in range(len(_mo)) if real_of(i * OP_DS) > RET0 and _mo[i] < 0.03), RET1)
-json.dump({"impact": T_IMP, "ret0": RET0, "land": _home, "hits": sorted(_hb.items()), "bursts": [{"t": b, "s": s} for b, s in BURSTS], "shapes": [ts for ts, _ in SHAPES], "split": SPLIT_T, "grains": sorted(float(x) + 1.0 for x in _STR_T0), "dust": DUST_T}, open(os.path.join(OUT, "events.json"), "w"))
+json.dump({"impact": T_IMP, "ret0": RET0, "land": _home, "hits": sorted(_hb.items()), "bursts": [{"t": b, "s": s} for b, s in BURSTS], "shapes": [ts for ts, _ in SHAPES], "wave": [WAVE, FLIP], "split": SPLIT_T, "grains": sorted(float(x) + 1.0 for x in _STR_T0), "dust": DUST_T}, open(os.path.join(OUT, "events.json"), "w"))
 frames = list(range(int(round(T0 * FPS)), int(round(T1 * FPS))))
 if os.environ.get("DM_TIMES"):
     frames = [int(round(float(x) * FPS)) for x in os.environ["DM_TIMES"].split(",")]
@@ -525,14 +608,18 @@ def setup(t):
     vel_attr.data.foreach_set("vector", vel.reshape(-1).astype(np.float32))
     size_attr.data.foreach_set("value", SIZE.astype(np.float32))
     me.vertices.foreach_set("co", P.reshape(-1).astype(np.float32))
-    col_attr.data.foreach_set("color", colours(P_REST, t).reshape(-1).astype(np.float32))
+    cc_ = colours(P_REST, t)
+    cc_[:, :3] = cc_[:, :3] * (1 - 0.6 * RING[:, None]) + 0.6 * RING[:, None]     # the wave ring burns near-white
+    col_attr.data.foreach_set("color", cc_.reshape(-1).astype(np.float32))
+    update_wires(P, glow, cc_)
     glow_attr.data.foreach_set("value", glow.astype(np.float32))
     me.update()
     pos, look = camera(t)
     cam.location = pos; cam.rotation_euler = (look - pos).to_track_quat("-Z", "Y").to_euler()
     camd.dof.focus_distance = (look - pos).length - 0.6
     bc = ball_at(sim_t(t)); ball_o.location = (float(bc[0]), float(bc[1]), float(bc[2]))
-    ball_o.hide_render = bool(np.linalg.norm(bc) > 14.0)
+    _bs = 1.0 - float(sm(2.4, 3.0, t)); ball_o.scale = (_bs, _bs, _bs)   # gone once the hole has closed
+    ball_o.hide_render = bool(np.linalg.norm(bc) > 14.0 or _bs < 0.01)
 
 
 # real motion blur by sub-frame accumulation (env DM_SUB, default 4): each frame = mean of SUB renders spread over a

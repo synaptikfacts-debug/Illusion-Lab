@@ -17,7 +17,7 @@ import { orch, piano, play } from "./lib/sampler";
 const [dir, secArg, outPrefix] = process.argv.slice(2);
 const DUR = Number(secArg);
 interface Ev { impact: number; ret0: number; land: number; hits: [number, number][]; bursts: { t: number; s: number }[];
-  shapes: number[]; split: number; grains: number[]; dust: number }
+  shapes: number[]; wave: [number, number]; split: number; grains: number[]; dust: number }
 const E = JSON.parse(readFileSync(join(dir, "events.json"), "utf8")) as Ev;
 let seed = 30;
 const rnd = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32);
@@ -53,15 +53,18 @@ for (const [t, n] of E.hits) {
 swell(sfx, E.ret0, E.land, [330, 495, 660], 0.035, 0.5);
 for (let i = 0; i < 50; i++) tap(sfx, E.land - 0.6 + 0.6 * Math.sqrt(rnd()), 900 + 800 * rnd(), 0.015, 0.2 + 0.6 * rnd());
 thock(sfx, E.land, 58, 0.36);
-// every new shape: a soft bloom (taps) and a thock on its peak, a different pitch for each shape
+// every new shape is a light wave crossing the body: a soft chime as the ring sets off, a shimmer of taps that rises in
+// pitch as it travels (nodes re-forming behind it), and a thock when the new shape closes - a different pitch per shape
 const SHAPE_HZ = [55, 49, 58, 52, 62, 46, 55];
-E.bursts.forEach((b, i) => {
-  for (let k = 0; k < 26; k++) tap(sfx, b.t + 0.05 + 0.65 * Math.sqrt(rnd()), 1000 + 1100 * rnd(), 0.011, 0.2 + 0.6 * rnd());
-  thock(sfx, b.t + 0.68, SHAPE_HZ[i % SHAPE_HZ.length], 0.38);
+const [WAVE, FLIP] = E.wave;
+E.shapes.slice(1).forEach((ts, i) => {
+  tap(sfx, ts, 990, 0.03, 0.5, 4);
+  for (let k = 0; k < 34; k++) { const u = rnd(); tap(sfx, ts + 0.15 + WAVE * u, 700 + 900 * u + 200 * rnd(), 0.011, 0.2 + 0.6 * rnd(), 16); }
+  thock(sfx, ts + WAVE + FLIP * 0.75, SHAPE_HZ[i % SHAPE_HZ.length], 0.38);
 });
 // the split: sparkles while the beads travel, one thock per sphere as it closes
 for (let k = 0; k < 40; k++) tap(sfx, E.split + 0.2 + 1.5 * rnd(), 1500 + 1200 * rnd(), 0.009, 0.15 + 0.7 * rnd(), 22);
-[0.0, 0.2, 0.4].forEach((d, i) => thock(sfx, E.split + 1.45 + d, [62, 55, 49][i], 0.3, 1.6, 4.5, [0.5, 0.25, 0.75][i]));
+[0.0, 0.35, 0.7].forEach((d, i) => thock(sfx, E.split + 1.2 + d, [62, 55, 49][i], 0.3, 1.6, 4.5, [0.5, 0.25, 0.75][i]));
 // the hourglass: every few grains landing on the pile = a soft low tap (sand patter, thinned so it never clatters)
 E.grains.forEach((t, i) => { if (i % 5 === 0) tap(sfx, t, 380 + 260 * rnd(), 0.012, 0.4 + 0.2 * rnd(), 26); });
 // the disc flattening and turning: a soft rising swell; the calm body: a warm settle thock
