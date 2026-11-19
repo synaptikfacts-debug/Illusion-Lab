@@ -120,3 +120,18 @@ Say which of these you checked and what you changed. The owner should never have
 - EDGES: no large flat single-colour areas along the frame edges - Instagram flagged 0018 "Your video has a border".
   Fill the top/bottom/sides with real detail (lit background with depth, soft bokeh shapes, objects). The render now
   runs an edge-band check (scripts/lib/edges.ts) and prints a WARNING; fix it before delivering.
+
+## RULE: TIME BUDGET + NO LOST WORK (owner, Nov 19 2026 - after 0028 ink took a whole day: "a similar Short took 30
+## MINUTES", "you lost 4 hours of my time") - the owner pays for every message and is short of money
+- A reel must fit ~30-60 min of wall time from approval to delivery. BEFORE building, research the method yourself and
+  time a short probe on this machine INCLUDING its heaviest part (e.g. late, ink-filled simulation frames). If the full
+  job won't fit, pick a lighter method - never make the owner wait hours.
+- Blender fluid (Mantaflow) bakes on the CPU only; the GPU only speeds up Cycles rendering. Bake cost grows as the
+  fluid fills the domain - measure late frames.
+- ETAs only from measurements, with margin. Never promise a time you have not measured.
+- Check sharpness at full 1080p and sound on the phone band (>200 Hz, ~-20 LUFS) yourself before sending anything; do
+  not make the owner find blur or silence.
+- Ask the owner only real taste decisions, in ONE question; research and decide everything else yourself.
+- NEVER experiment on live work: copy first. Never point a second Blender process at a live fluid cache - it deletes it.
+- Start long jobs detached (PowerShell Start-Process) so a session restart can't kill them; chain bake -> render ->
+  encode automatically.
