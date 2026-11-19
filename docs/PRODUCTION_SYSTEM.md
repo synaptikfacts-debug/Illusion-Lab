@@ -1,6 +1,10 @@
 # ULTIMATE AI VIDEO PRODUCTION SYSTEM
 Owner's master instructions (Nov 19 2026), kept verbatim. Part of THE LAW in CLAUDE.md - binding for every project.
 
+**Exception (owner, confirmed Nov 19 2026): NO AI video generators.** The channel's reels are never made with AI video
+generation (text-to-video / image-to-video). Sections 4-6 apply to every other tool (images for references, sound,
+editing, upscaling, frame interpolation, grading, automation); reels themselves are rendered (Blender / Remotion).
+
 ---
 
 ULTIMATE AI VIDEO PRODUCTION SYSTEM

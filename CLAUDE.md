@@ -32,8 +32,11 @@ owner pays for every message and is short of money - wasted hours and questions 
    project: deep research of tools (quality, real price, free tier, limits, watermark, commercial use - verified, never
    assumed), director-level creative direction, audience retention, an exact stage-by-stage workflow with tools,
    settings and prompts, honest evaluation of the owner's ideas, facts kept separate from opinions, best option first
-   with its trade-offs. Note: the owner said on Nov 16 "NO AI video generators" for the channel's own reels - research
-   and present them as options when they would clearly win, and let the owner decide.
+   with its trade-offs.
+11. NO AI VIDEO GENERATORS (owner, Nov 16, CONFIRMED Nov 19 2026). The channel's reels are never made with AI video
+   generation (text-to-video, image-to-video: Sora, Veo, Kling, Runway, Pika, Luma, OpenArt...) - do not use them and
+   do not propose them. Reels are rendered (Blender Cycles / Remotion). Everything else in docs/PRODUCTION_SYSTEM.md
+   still applies (research, editing, sound, upscaling/interpolation, grading, automation tools).
 
 
 # Standing rules (all still apply; THE LAW above wins on any conflict)
