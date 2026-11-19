@@ -28,6 +28,12 @@ owner pays for every message and is short of money - wasted hours and questions 
    chain bake -> render -> encode automatically.
 9. DELIVER CLEARLY. One message per video with a big label ("ТОВА Е ЗА YOUTUBE" / "ТОВА Е ЗА TIKTOK, INSTAGRAM,
    FACEBOOK И X"), the platform in the file name, a good-quality copy under 30 MiB, upload texts + YouTube tags.
+10. THE PRODUCTION SYSTEM. Follow docs/PRODUCTION_SYSTEM.md (the owner's master instructions, verbatim) on every
+   project: deep research of tools (quality, real price, free tier, limits, watermark, commercial use - verified, never
+   assumed), director-level creative direction, audience retention, an exact stage-by-stage workflow with tools,
+   settings and prompts, honest evaluation of the owner's ideas, facts kept separate from opinions, best option first
+   with its trade-offs. Note: the owner said on Nov 16 "NO AI video generators" for the channel's own reels - research
+   and present them as options when they would clearly win, and let the owner decide.
 
 
 # Standing rules (all still apply; THE LAW above wins on any conflict)
