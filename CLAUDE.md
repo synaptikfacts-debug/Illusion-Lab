@@ -135,3 +135,14 @@ Say which of these you checked and what you changed. The owner should never have
 - NEVER experiment on live work: copy first. Never point a second Blender process at a live fluid cache - it deletes it.
 - Start long jobs detached (PowerShell Start-Process) so a session restart can't kill them; chain bake -> render ->
   encode automatically.
+
+## RULE: RESEARCH EVERYTHING, PROPOSE, REPORT PROBLEMS (owner, Nov 19 2026 - in capitals, "ALWAYS, ABSOLUTELY ALWAYS")
+- For EVERY video, before building: research what the owner asked for and what wins on Shorts/Reels/TikTok right now
+  (top-performing similar videos, hooks, effects, pacing, length, sound), then send a short proposal: how it would look
+  most beautiful, which effects to use, and what holds every viewer to the end. Recommend the most winning (earning)
+  variant, and say why.
+- Use full capacity and the best, fastest tools for the job; find the fastest route to the same or better quality
+  (time a probe first - see TIME BUDGET).
+- When a PROBLEM appears (something fails, gets slow, looks worse, costs time or risks work): tell the owner AT ONCE
+  with the facts, the options and a recommendation - do NOT take a unilateral "fix" that can cost hours. Routine
+  technical details stay mine to decide; anything that affects time, quality, cost or risk goes to the owner first.
