@@ -24,3 +24,4 @@ assets/generated/*.bin
 # python caches / windows folder settings
 __pycache__/
 desktop.ini
+waveletNoiseTile.bin

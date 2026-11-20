@@ -1,3 +1,83 @@
+# Nov 20 2026, night - HANDOVER (read this first, then CLAUDE.md)
+The owner continues from ANOTHER ACCOUNT. Local Claude memory may not be visible there, so everything important is
+here. Reply in Bulgarian; code, commits and upload texts stay English. Follow THE LAW in CLAUDE.md.
+
+## 1. Done today
+- **0028 "What Happens When a Glass Ball Hits Black Ink"**: delivered, and the owner liked it ("брутално").
+  - Scene: `scripts/milk_ink_v2.py` with `MI_OPEN=ball` (own 2D ink-in-milk marble solver). A dark glass ball flies in from the corner, hits a black ink drop at 0.35 s, the drop shatters into black marble, small ink jets pop, the heavy ball sinks and vanishes.
+  - Sound: `scripts/gen-ink-ball-audio.ts`. Water sounds only: plips, bubbles, a plunge, and one glass ting on the impact.
+  - Files: `publish/0028-glass-ball-black-ink/` (local, git-ignored). Already posted by the owner.
+
+## 2. In progress: reel 0031 "hexagon columns" (NOT approved yet)
+Concepts tried today, in order:
+- **Geode (crystals in a cracked rock):** REJECTED. `scripts/blender/geode.py`
+- **Kinetic sand cutting:** REJECTED as "very childish" (pastel). `scripts/blender/sand_cut.py`
+- **Flip-tile wall (10,000 gold/black tiles):** still shown, the owner moved on. `scripts/blender/flip_tiles.py`
+- **Hexagon columns** (owner pick; the 0011 "4096 pins" formula): `scripts/blender/hex_columns.py` (scene + still).
+  - Test 1 (calm, `hex_anim.py` early version): "looks super".
+  - Test 2 (realism, thin glow): "colours boring, effects boring, nothing holds me".
+  - Test 3 (sparks, bounce, eruption tower, current `hex_anim.py`): REJECTED. "Not ASMR, not pleasant, I don't like the sparks."
+  - Calm version (`hex_calm.py`, flower/star mandala shapes): REJECTED. "No star or flower shapes, they look bad."
+  - **CURRENT: `scripts/blender/hex_waves.py`.** Smooth, beautiful, "brutal" physical phenomena, no sparks, no bouncing:
+    - 0-2.6 s: three chrome spheres glide in and settle; their ripples interfere (ice/silver);
+    - 4-7.4 s: a deep whirlpool with glowing spiral grooves; the spheres orbit it (violet/cyan);
+    - 7.6 s: the funnel rebounds into a huge smooth ring wave across the field (magenta -> gold), then everything settles;
+    - the colour travels column by column with each wave.
+    - Probes looked good. The 12 s full-HD test was rendering into `out/0031/wavetest/` when the session ended (48 of 360 frames done). Out/ is git-ignored, so re-render on the new account.
+  - Sound: `scripts/gen_hex_audio.py` (Python). It reads `events.json` beats (land, swirl, wave) and column crossings, and makes soft tactile taps.
+
+### Finish the 0031 test
+```
+blender -b --factory-startup -P scripts/blender/hex_waves.py -- out/0031/wavetest 12 30      # env HX_RES=1080x1920 HX_SAMPLES=48
+   (resume a range: ... 12 30 48 359  - the field state is computed for every frame, so partial ranges are exact)
+ffmpeg -framerate 30 -i out/0031/wavetest/f_%04d.png -c:v libx264 -crf 14 -pix_fmt yuv420p out/0031/wavetest/video.mp4
+python scripts/gen_hex_audio.py out/0031/wavetest out/0031/wavetest/sfx_raw.wav   (Blender's python works)
+ffmpeg -i sfx_raw.wav -af highpass=f=60,highpass=f=60 sfx_hp.wav ; bash scripts/tools/master_audio.sh sfx_hp.wav sfx.wav
+mux (crf 19, aac 192k) -> npx tsx scripts/flashcheck.ts <file>  (MUST pass) -> send as "ТЕСТ ..." and wait for the owner
+```
+- **Speed (measured):** about 2-2.3 s per full-HD frame at 48 samples on the RTX 4070 Ti; a half-size probe frame takes about 1 s.
+- **Full reel estimate:** about 35 s at 60 fps is about 80 min; at 30 fps about 40 min. Time a probe before promising.
+- **Blender:** `C:\Program Files\Blender Foundation\Blender 5.3\blender.exe`. Python: the `...\5.3\python\bin\python.exe` inside it.
+
+## 3. Owner lessons from today (MUST follow)
+1. **Opening that wins:** an object flies in on frame 0 (big, near the lens) and hits at about 0.35 s ("A Glass Ball Hit It", 1.2K views). Heavy objects must sink or settle; never leave one hanging without logic.
+2. **Calm, eye-pleasing ASMR**, hypnotic like 0011:
+   - REJECTED: sparks, bounces, eruptions, white-hot glare, game-like busyness;
+   - REJECTED: flower, star or mandala shapes, faces, pictures;
+   - REJECTED: pastel, "childish" looks.
+   - Wanted: ripples, interference, vortices, big smooth waves, deep rich colours (calm areas near-black, colour blooms on the waves).
+3. **"Boring"** means add beauty and new phenomena. It does not mean add noise.
+4. **Two misses in a row:** confirm the core look in ONE line before rendering again.
+5. **Sounds:**
+   - liquid reels: water sounds (plips, bubbles, plunge), NO bells, harp or glockenspiel, no thocks;
+   - mechanical reels: soft tactile taps;
+   - phone band (>200 Hz) about -15 to -20 LUFS; high-pass the mix at 60-70 Hz.
+6. **Flash check is non-negotiable:** fix the effect, never the rules. Large bright areas must brighten over 0.5-0.8 s and fade slowly; no one-frame jumps, no oscillating glow (`heat_s` attack/release in `hex_anim.py` / `hex_waves.py`).
+7. **Frame edges:** after a full render, measure flat or smeared rows and columns at several times (`edges.ts` missed a 6% smear in 0028). Keep the camera clamped inside the scene.
+8. **"Improve reel X"** means fix that exact video, never rebuild it. Every still must answer: "would a stranger name the subject in 1 s?"
+9. **Delivery format:**
+   - one message per video with a big label ("ТОВА Е ЗА YOUTUBE" / "...ЗА TIKTOK, INSTAGRAM, FACEBOOK И X");
+   - an under-30 MiB copy (2-pass);
+   - a 4K cover plus thumbnails;
+   - upload texts pasted as copy boxes;
+   - commit (push only when the owner asks).
+10. **Public YouTube views on Nov 20** (channel Nevoxia):
+    - about 1.1-1.2K each: Glass Ball Hit It, came alive, Core Unlocking, eats steel, 4096 pins, galaxy;
+    - One Hit Broke 2000 Beads: 818.
+    - The genre "Every X = Y... until..." (rule plus escalation) was getting 9.8K in 10 h in search results.
+
+## 4. Tools
+- Audio mastering: `scripts/tools/master_audio.sh`. Edge check: `scripts/tools/edge-check.ts`. Flash check: `scripts/flashcheck.ts`.
+- **Chrome extension** was not connected. YouTube can be read through the app's built-in browser (reject non-essential cookies).
+
+# Nov 17 2026, night - state (read first)
+- Delivered today: 0024 v9 (liked), 0027 liquid machine (owner: effects too weak), 0028 black ink in milk (owner: "slop",
+  sounds unpleasant, too fast). Owner is exhausted and unsure whether to continue; be calm, brief, no pitching.
+- Uncommitted WIP: scripts/milk_cosmos.py slowed to ~33 s (rate 0.6 -> 0.32) + scripts/gen-milk-cosmos-audio.ts (soft
+  thocks/bloops). Low-res flash check of the slow version is in the task log; nothing re-delivered.
+- Lessons (also in memory): confirm the core look in ONE line before building (base, dominant colour, mechanic); never reuse
+  a past reel's effect; give clock ETAs only after a quick check passes; 2D sims read flat - "brutal" needs real 3D.
+
 # Handoff (Nov 16 2026, night) - read this first, then CLAUDE.md
 
 The owner continues from another account (weekly limit hit). Nothing below is in local memory on the new account.

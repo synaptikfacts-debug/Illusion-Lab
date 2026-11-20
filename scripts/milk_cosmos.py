@@ -178,7 +178,7 @@ def shade(t, zoom, cy, cx):
     img = img * (0.82 + 0.18 * np.clip(n @ L, 0, 1))[..., None]
     img += (np.clip(n @ L, 0, 1) ** 40 * op)[..., None] * 0.35          # a glossy highlight on the dye
     img = img * (1 - 0.18 * edge[..., None]) + (edge[..., None] * colw * 0.0)
-    k = min(1.0, max(0.0, (t - 19.8) / 1.6)); img = img * (1 - k * k * (3 - 2 * k))
+    k = min(1.0, max(0.0, (t - 31.2) / 1.7)); img = img * (1 - k * k * (3 - 2 * k))
     up = np.repeat(np.repeat(img, 2, 0), 2, 1)[:H, :W]
     return (np.clip(up, 0, 1) ** (1 / 1.02) * 255).astype(np.uint8)
 
@@ -199,7 +199,7 @@ def rate(t):
     def ss(a_, b_):
         k = min(1.0, max(0.0, (t - a_) / (b_ - a_)))
         return k * k * (3 - 2 * k)
-    return 1.0 - 0.55 * ss(4.9, 6.0)          # slow motion once the milk gets dense (flash check), real speed for the hook
+    return 0.6 - 0.28 * ss(4.6, 5.8)          # owner: "everything happens too fast" -> slow motion throughout, slower still once dense
 
 
 PRE = 0.42
