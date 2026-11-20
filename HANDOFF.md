@@ -23,13 +23,13 @@ Concepts tried today, in order:
     - 4-7.4 s: a deep whirlpool with glowing spiral grooves; the spheres orbit it (violet/cyan);
     - 7.6 s: the funnel rebounds into a huge smooth ring wave across the field (magenta -> gold), then everything settles;
     - the colour travels column by column with each wave.
-    - Probes looked good. The 12 s full-HD test was rendering into `out/0031/wavetest/` when the session ended (48 of 360 frames done). Out/ is git-ignored, so re-render on the new account.
+    - Probes looked good. The 12 s full-HD test was rendering into `out/0031/wavetest/` at handover (152 of 360 frames done at 2-2.3 s/frame). On the same PC, count the `f_*.png` files there and resume from the first missing frame; on another PC, render it again (out/ is git-ignored).
   - Sound: `scripts/gen_hex_audio.py` (Python). It reads `events.json` beats (land, swirl, wave) and column crossings, and makes soft tactile taps.
 
 ### Finish the 0031 test
 ```
 blender -b --factory-startup -P scripts/blender/hex_waves.py -- out/0031/wavetest 12 30      # env HX_RES=1080x1920 HX_SAMPLES=48
-   (resume a range: ... 12 30 48 359  - the field state is computed for every frame, so partial ranges are exact)
+   (resume a range: ... 12 30 <first missing frame> 359  - the field state is computed for every frame, so partial ranges are exact)
 ffmpeg -framerate 30 -i out/0031/wavetest/f_%04d.png -c:v libx264 -crf 14 -pix_fmt yuv420p out/0031/wavetest/video.mp4
 python scripts/gen_hex_audio.py out/0031/wavetest out/0031/wavetest/sfx_raw.wav   (Blender's python works)
 ffmpeg -i sfx_raw.wav -af highpass=f=60,highpass=f=60 sfx_hp.wav ; bash scripts/tools/master_audio.sh sfx_hp.wav sfx.wav
